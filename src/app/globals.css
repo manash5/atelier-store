@@ -1,26 +1,586 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ==========================================================================
+   Atelier design system
+   Quiet, editorial luxury retail: monochrome palette, imagery first,
+   hairline borders, square corners, generous whitespace, small tracked
+   uppercase UI labels paired with an expressive serif display face.
+   ========================================================================== */
+
+@theme static {
+  /* ---- Color ------------------------------------------------------------
+     The default Tailwind palette is removed so only these tokens exist.
+     Product imagery provides the color; the interface stays monochrome. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-canvas: #ffffff; /* page background */
+  --color-surface: #f6f5f3; /* image wells, product backdrops, subtle panels */
+  --color-surface-strong: #ecebe8; /* hover/pressed surface, skeletons */
+
+  --color-ink: #0a0a0a; /* primary text, primary buttons, strong rules */
+  --color-ink-soft: #3a3a3a; /* hover state of ink fills */
+  --color-ink-muted: #6b6b6b; /* secondary text (5.3:1 on canvas) */
+  --color-ink-subtle: #767676; /* placeholders, disabled text (4.5:1) */
+
+  --color-line: #e6e6e6; /* hairline dividers, card and panel borders */
+  --color-line-strong: #8c8c8c; /* form control borders (3:1 non-text) */
+
+  --color-sale: #a3171d; /* price reductions, errors */
+  --color-success: #2d5f3a; /* confirmations, in-stock */
+  --color-overlay: rgb(10 10 10 / 0.45); /* scrims for drawers and modals */
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bodoni), ui-serif, Georgia, serif;
+
+  /* Fluid display sizes, compact UI sizes. Each size carries its own
+     line-height and tracking so `text-*` alone is already balanced. */
+  --text-display-xl: clamp(3rem, 1.75rem + 5.5vw, 7.5rem);
+  --text-display-xl--line-height: 0.95;
+  --text-display-xl--letter-spacing: -0.02em;
+
+  --text-display: clamp(2.25rem, 1.6rem + 2.8vw, 4.5rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.015em;
+
+  --text-heading: clamp(1.625rem, 1.35rem + 1.2vw, 2.5rem);
+  --text-heading--line-height: 1.15;
+  --text-heading--letter-spacing: -0.01em;
+
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.4;
+
+  --text-body-lg: 1rem;
+  --text-body-lg--line-height: 1.65;
+
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.6;
+
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.5;
+
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-label--letter-spacing: 0.1em;
+
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1rem;
+  --text-micro--letter-spacing: 0.08em;
+
+  --tracking-label: 0.1em;
+
+  /* ---- Spacing & layout -------------------------------------------------
+     Base 4px scale stays (p-4, gap-6…). These named tokens are responsive
+     and overridden per breakpoint in the base layer below. */
+  --spacing-gutter: 1rem; /* page side padding */
+  --spacing-section: 4rem; /* vertical rhythm between page sections */
+  --spacing-section-sm: 2.5rem; /* rhythm inside a section */
+  --spacing-header: 3.5rem; /* site header height; use for sticky offsets */
+  --spacing-announcement: 2.25rem; /* single-line bar above the header */
+
+  --container-page: 90rem; /* 1440px: full storefront width */
+  --container-content: 72rem; /* 1152px: editorial and account pages */
+  --container-prose: 40rem; /* 640px: long-form text */
+  --container-form: 28rem; /* 448px: auth and single-column forms */
+
+  /* ---- Shape -------------------------------------------------------------
+     Square corners everywhere. Only `rounded-full` remains for swatches
+     and count badges. */
+  --radius-*: initial;
+  --radius-full: calc(infinity * 1px);
+
+  /* ---- Imagery ---------------------------------------------------------- */
+  --aspect-product: 4 / 5; /* listing and gallery images */
+  --aspect-portrait: 3 / 4; /* editorial tiles */
+  --aspect-landscape: 16 / 9; /* desktop hero and campaign banners */
+
+  /* ---- Motion ----------------------------------------------------------- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --default-transition-duration: 250ms;
+  --default-transition-timing-function: var(--ease-standard);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ==========================================================================
+   Base
+   ========================================================================== */
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    @variant md {
+      --spacing-gutter: 1.5rem;
+      --spacing-section: 5.5rem;
+      --spacing-section-sm: 3rem;
+    }
+
+    @variant lg {
+      --spacing-gutter: 2.5rem;
+      --spacing-section: 7rem;
+      --spacing-section-sm: 3.5rem;
+      --spacing-header: 4.5rem;
+    }
+  }
+
+  html {
+    color-scheme: light;
+    scroll-padding-top: var(--spacing-header);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Hairlines by default, so a bare `border` / `border-b` is a divider. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-line);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: var(--color-ink);
+    color: var(--color-canvas);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-ink);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ==========================================================================
+   Typography primitives: family + size + tracking + case in one class.
+   Color is never baked in; pair with text-ink / text-ink-muted.
+   ========================================================================== */
+
+@utility type-display-xl {
+  font-family: var(--font-display);
+  font-size: var(--text-display-xl);
+  line-height: var(--text-display-xl--line-height);
+  letter-spacing: var(--text-display-xl--letter-spacing);
+  font-weight: 400;
+}
+
+@utility type-display {
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  line-height: var(--text-display--line-height);
+  letter-spacing: var(--text-display--letter-spacing);
+  font-weight: 400;
+}
+
+@utility type-heading {
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  line-height: var(--text-heading--line-height);
+  letter-spacing: var(--text-heading--letter-spacing);
+  font-weight: 400;
+}
+
+@utility type-title {
+  font-family: var(--font-sans);
+  font-size: var(--text-title);
+  line-height: var(--text-title--line-height);
+  font-weight: 500;
+}
+
+@utility type-body-lg {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-lg);
+  line-height: var(--text-body-lg--line-height);
+}
+
+@utility type-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: var(--text-body--line-height);
+}
+
+@utility type-caption {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  line-height: var(--text-caption--line-height);
+}
+
+/* Nav items, eyebrows, buttons, filters, table headers. */
+@utility type-label {
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* Badges, legal lines, image credits. */
+@utility type-micro {
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  line-height: var(--text-micro--line-height);
+  letter-spacing: var(--text-micro--letter-spacing);
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Layout primitives
+   ========================================================================== */
+
+/* Sections run full width; put content inside one of these. */
+@utility container-page {
+  width: 100%;
+  max-width: var(--container-page);
+  margin-inline: auto;
+  padding-inline: var(--spacing-gutter);
+}
+
+@utility container-content {
+  width: 100%;
+  max-width: calc(var(--container-content) + var(--spacing-gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--spacing-gutter);
+}
+
+@utility container-prose {
+  width: 100%;
+  max-width: calc(var(--container-prose) + var(--spacing-gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--spacing-gutter);
+}
+
+@utility container-form {
+  width: 100%;
+  max-width: calc(var(--container-form) + var(--spacing-gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--spacing-gutter);
+}
+
+/* 4 → 8 → 12 column page grid for editorial layouts and PDP splits. */
+@utility grid-page {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--spacing-gutter);
+
+  @variant md {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  @variant lg {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+/* Product listing grid: 2 → 3 → 4 columns, tight columns, airy rows
+   so imagery reads as one continuous wall. */
+@utility grid-products {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0.25rem;
+  row-gap: 2.5rem;
+
+  @variant md {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 0.5rem;
+    row-gap: 3rem;
+  }
+
+  @variant xl {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 3.5rem;
+  }
+}
+
+/* Horizontal, snap-scrolling rail for product carousels. Shows a peek of
+   the next item on small screens to signal scrollability. The thin
+   scrollbar doubles as a progress line and keeps it mouse-scrollable. */
+@utility rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 72%;
+  gap: 0.25rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--spacing-gutter);
+  padding-inline: var(--spacing-gutter);
+  padding-bottom: 1.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink) var(--color-line);
+
+  & > * {
+    scroll-snap-align: start;
+  }
+
+  @variant md {
+    grid-auto-columns: 40%;
+    gap: 0.5rem;
+  }
+
+  @variant lg {
+    grid-auto-columns: calc((100% - 1.5rem) / 4);
+  }
+}
+
+/* Fills the first screen below the announcement bar and header, capped on
+   very tall screens and floored on very short ones. */
+@utility h-hero {
+  height: min(
+    calc(100svh - var(--spacing-header) - var(--spacing-announcement)),
+    60rem
+  );
+  min-height: 32rem;
+}
+
+/* Image well: neutral backdrop behind product shots, media fills it. */
+@utility media-frame {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-surface);
+
+  & > :is(img, video, picture) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+/* ==========================================================================
+   Buttons
+   `btn` + one variant (+ optional size). Variants and sizes only set
+   custom properties, so class order never matters.
+   ========================================================================== */
+
+@utility btn {
+  --btn-bg: var(--color-ink);
+  --btn-fg: var(--color-canvas);
+  --btn-border: var(--color-ink);
+  --btn-bg-hover: var(--color-ink-soft);
+  --btn-fg-hover: var(--color-canvas);
+  --btn-border-hover: var(--color-ink-soft);
+  --btn-height: 3rem;
+  --btn-px: 2rem;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  min-height: var(--btn-height);
+  padding-inline: var(--btn-px);
+  border: 1px solid var(--btn-border);
+  border-radius: 0;
+  background-color: var(--btn-bg);
+  color: var(--btn-fg);
+  font-family: var(--font-sans);
+  font-size: var(--text-label);
+  line-height: var(--text-label--line-height);
+  letter-spacing: var(--text-label--letter-spacing);
+  font-weight: 500;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition-property: background-color, border-color, color;
+  transition-duration: var(--default-transition-duration);
+  transition-timing-function: var(--ease-standard);
+
+  @media (hover: hover) {
+    &:hover {
+      background-color: var(--btn-bg-hover);
+      border-color: var(--btn-border-hover);
+      color: var(--btn-fg-hover);
+    }
+  }
+
+  &:disabled,
+  &[aria-disabled="true"] {
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.35;
+  }
+}
+
+/* Solid ink: the one main action per view (add to bag, checkout). */
+@utility btn-primary {
+  --btn-bg: var(--color-ink);
+  --btn-fg: var(--color-canvas);
+  --btn-border: var(--color-ink);
+  --btn-bg-hover: var(--color-ink-soft);
+  --btn-fg-hover: var(--color-canvas);
+  --btn-border-hover: var(--color-ink-soft);
+}
+
+/* Outline: secondary actions; fills with ink on hover. */
+@utility btn-secondary {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-ink);
+  --btn-border: var(--color-ink);
+  --btn-bg-hover: var(--color-ink);
+  --btn-fg-hover: var(--color-canvas);
+  --btn-border-hover: var(--color-ink);
+}
+
+/* Light fill for use on top of imagery and dark panels. */
+@utility btn-inverse {
+  --btn-bg: var(--color-canvas);
+  --btn-fg: var(--color-ink);
+  --btn-border: var(--color-canvas);
+  --btn-bg-hover: var(--color-surface-strong);
+  --btn-fg-hover: var(--color-ink);
+  --btn-border-hover: var(--color-surface-strong);
+}
+
+/* Borderless: toolbar and icon actions. */
+@utility btn-ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-ink);
+  --btn-border: transparent;
+  --btn-bg-hover: var(--color-surface);
+  --btn-fg-hover: var(--color-ink);
+  --btn-border-hover: transparent;
+}
+
+@utility btn-sm {
+  --btn-height: 2.5rem;
+  --btn-px: 1.25rem;
+}
+
+@utility btn-lg {
+  --btn-height: 3.5rem;
+  --btn-px: 2.75rem;
+}
+
+/* Square icon-only button; pair with btn-ghost. Keeps a 44px tap target. */
+@utility btn-icon {
+  --btn-height: 2.75rem;
+  --btn-px: 0;
+  width: 2.75rem;
+}
+
+/* ==========================================================================
+   Links
+   ========================================================================== */
+
+/* Inline text links: thin underline that fades out on hover. */
+@utility link {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+  text-decoration-color: currentColor;
+  transition-property: text-decoration-color, color;
+  transition-duration: var(--default-transition-duration);
+
+  @media (hover: hover) {
+    &:hover {
+      text-decoration-color: transparent;
+    }
+  }
+}
+
+/* Navigation and footer links: no underline until hover. */
+@utility link-quiet {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+  text-decoration-color: transparent;
+  transition-property: text-decoration-color, color;
+  transition-duration: var(--default-transition-duration);
+
+  @media (hover: hover) {
+    &:hover {
+      text-decoration-color: currentColor;
+    }
+  }
+
+  &[aria-current="page"] {
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Secondary links (filters, breadcrumbs): muted until hovered. */
+@utility link-muted {
+  color: var(--color-ink-muted);
+  transition-property: color;
+  transition-duration: var(--default-transition-duration);
+
+  @media (hover: hover) {
+    &:hover {
+      color: var(--color-ink);
+    }
+  }
+
+  &[aria-current="page"] {
+    color: var(--color-ink);
+  }
+}
+
+/* ==========================================================================
+   Form controls
+   ========================================================================== */
+
+@utility input-base {
+  display: block;
+  width: 100%;
+  min-height: 3rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 0;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: max(16px, var(--text-body)); /* 16px stops iOS zoom-on-focus */
+  transition-property: border-color;
+  transition-duration: var(--default-transition-duration);
+
+  &::placeholder {
+    color: var(--color-ink-subtle);
+  }
+
+  &:focus {
+    border-color: var(--color-ink);
+  }
+
+  &[aria-invalid="true"] {
+    border-color: var(--color-sale);
+  }
+
+  &:disabled {
+    background-color: var(--color-surface);
+    color: var(--color-ink-subtle);
+    cursor: not-allowed;
+  }
 }
