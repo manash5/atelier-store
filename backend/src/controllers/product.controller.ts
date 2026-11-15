@@ -12,10 +12,14 @@ import { sendOk } from "../utils/http-response";
 
 export const productController = {
   async list(req: Request, res: Response) {
-    const { slugs, page, limit } = validated(req, "query", ListProductsQuery);
+    const { slugs, page, limit, sort, category } = validated(
+      req,
+      "query",
+      ListProductsQuery,
+    );
     const result = slugs
       ? await productService.listBySlugs(slugs)
-      : await productService.list(page, limit);
+      : await productService.list({ page, limit, sort, category });
     sendOk(res, result.items.map(toProductDto), result.meta);
   },
 

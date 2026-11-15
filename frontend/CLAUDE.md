@@ -4,8 +4,9 @@
 
 This is the Next.js 16 storefront (App Router, `src/` dir, Turbopack, Cache Components), using TypeScript, Tailwind CSS v4 and Axios. Architecture: `../docs/architecture/frontend-architecture.md`.
 
-- Built so far: homepage (`/`) and product detail pages (`/products/[slug]`).
-- `/collections/*` and the footer pages don't exist yet, so links to them 404.
+- Built so far: homepage (`/`), product detail pages (`/products/[slug]`), New Arrivals (`/collections/new-in`, the 24 newest products via `sort=newest`) and category pages (`/collections/[slug]`, one per catalog category).
+- `/collections/<slug>` for anything that isn't a category (e.g. `women`, `gifts`, `resort-2027`) and the footer pages don't exist yet, so links to them show the not-found page.
+- Listing pages render `ProductListingPage` (header, count, `ProductListing` grid on `grid-products`, empty state) with `ProductListingSkeleton` as their Suspense fallback.
 - Path alias: `@/*` → `src/*`.
 
 ## Commands
@@ -59,7 +60,7 @@ All tokens and primitives live in `src/app/globals.css` (Tailwind v4, CSS-first,
   - Responsive spacing tokens: `gutter`, `section`, `section-sm`, `header`, `announcement` (e.g. `px-gutter`, `py-section`, `top-header`). Change their values per breakpoint in the base-layer `:root` block, not in components.
   - `h-hero` fills the first screen below the announcement bar and header.
   - Grids: `grid-page` (4/8/12 cols), `grid-products` (2/3/4 cols, for full listing pages), `rail` (snap carousel).
-  - The `ProductGrid` component is the single 4-product row (2×2 → 1×4) used for curated and related sets.
+  - The `ProductGrid` component is the single 4-product row (2×2 → 1×4) used for curated and related sets; `ProductListing` wraps `grid-products` for full listing pages.
   - Images: `media-frame` + `aspect-product|portrait|landscape`.
 - **Buttons:** `btn` + `btn-primary|secondary|inverse|ghost` (+ `btn-sm|lg|icon`). Variants and sizes only set `--btn-*` custom properties; keep it that way when adding new ones.
 - **Links:** `link` (inline underlined), `link-quiet` (nav/footer), `link-muted`.

@@ -9,4 +9,5 @@ export type Category = {
   image: Image | null;
 };
 
+export type CategoryResponse = ApiSuccess<Category>;
 export type CategoryListResponse = ApiSuccess<Category[]>;

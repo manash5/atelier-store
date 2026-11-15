@@ -15,7 +15,10 @@ export const CategoryDto = CategorySummaryDto.extend({
 });
 export type CategoryDto = z.infer<typeof CategoryDto>;
 
+export type CategoryResponse = ApiSuccess<CategoryDto>;
 export type CategoryListResponse = ApiSuccess<CategoryDto[]>;
+
+export const CategorySlugParams = z.object({ slug: Slug });
 
 export function toCategoryDto(category: Category): CategoryDto {
   return {

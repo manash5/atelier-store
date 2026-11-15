@@ -32,14 +32,13 @@ Every response carries an `x-request-id` header. A request id the client sends i
 | Method and path | Query | Response | Used by |
 |---|---|---|---|
 | `GET /api/v1/products` | `slugs=a,b,c` (1–24 slugs) | `ProductDto[]` in the requested order. Unknown slugs are omitted | Homepage New Arrivals, Gift Edit |
-| `GET /api/v1/products` | `page` (≥1, default 1), `limit` (1–100, default 24) | `ProductDto[]` + `meta`, in catalog order | `generateStaticParams` |
+| `GET /api/v1/products` | `page` (≥1, default 1), `limit` (1–100, default 24), `sort` (`catalog` default, or `newest`), `category` (category slug, optional) | `ProductDto[]` + `meta`. `catalog`: insertion order. `newest`: `created_at` descending, ties broken by newest id. `category` limits the page and `meta.total` to that category; an unknown category gives an empty page. `sort` and `category` are ignored with `slugs` | `generateStaticParams` (`catalog`), New Arrivals page (`newest`), category pages (`category`) |
 | `GET /api/v1/products/:slug` | — | `ProductDto`, or 404 | Product page and metadata |
 | `GET /api/v1/products/:slug/related` | `limit` (1–12, default 4) | `ProductDto[]`: same category first, then catalog order; excludes the product | "You May Also Like" |
-| `GET /api/v1/categories` | — | `CategoryDto[]` ordered by `sort_order` | Homepage category grid |
+| `GET /api/v1/categories` | — | `CategoryDto[]` ordered by `sort_order` | Homepage category grid, category page static params |
+| `GET /api/v1/categories/:slug` | — | `CategoryDto`, or 404 | Category page and metadata |
 | `GET /health` | — | `{ status: "ok", database: "ok" }` | Deploy health checks |
 | `ALL /api/auth/*` | — | Better Auth (e.g. `GET /api/auth/get-session`) | Auth client, server session lookup |
-
-`GET /api/v1/categories/:slug` is deferred until a `/collections/[slug]` page exists. Each product already embeds its category.
 
 Slugs must match `^[a-z0-9]+(-[a-z0-9]+)*$` (max 100 characters). Anything else gets a 400.
 

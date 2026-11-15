@@ -1,12 +1,26 @@
-import { asc, inArray, ne, sql } from "drizzle-orm";
+import { asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { db } from "../database";
-import { products } from "../database/schema";
+import { categories, products } from "../database/schema";
 import type { Product } from "../models/product";
 
 const withCategory = {
   category: { columns: { slug: true, title: true } },
 } as const;
+
+type PageFilter = { categorySlug?: string | undefined };
+
+/** Products in the category with this slug (none if it doesn't exist). */
+function inCategory(categorySlug: string | undefined) {
+  if (categorySlug === undefined) return undefined;
+  return inArray(
+    products.categoryId,
+    db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(eq(categories.slug, categorySlug)),
+  );
+}
 
 export const productRepository = {
   async findBySlug(slug: string): Promise<Product | null> {
@@ -26,18 +40,33 @@ export const productRepository = {
     });
   },
 
-  /** A page of the catalog in catalog (insertion) order. */
-  async findPage(offset: number, limit: number): Promise<Product[]> {
+  /**
+   * A page of the catalog (optionally one category) in catalog (insertion)
+   * order, or newest first. `id` breaks ties between rows created in the
+   * same transaction.
+   */
+  async findPage(
+    offset: number,
+    limit: number,
+    {
+      order = "catalog",
+      categorySlug,
+    }: PageFilter & { order?: "catalog" | "newest" } = {},
+  ): Promise<Product[]> {
     return db.query.products.findMany({
-      orderBy: asc(products.id),
+      where: inCategory(categorySlug),
+      orderBy:
+        order === "newest"
+          ? [desc(products.createdAt), desc(products.id)]
+          : asc(products.id),
       offset,
       limit,
       with: withCategory,
     });
   },
 
-  async count(): Promise<number> {
-    return db.$count(products);
+  async count({ categorySlug }: PageFilter = {}): Promise<number> {
+    return db.$count(products, inCategory(categorySlug));
   },
 
   /**

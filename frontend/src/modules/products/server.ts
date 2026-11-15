@@ -2,7 +2,9 @@
 // generateStaticParams).
 export {
   getAllProductSlugs,
+  getNewArrivals,
   getProduct,
+  getProductsByCategory,
   getProductsBySlugs,
   getRelatedProducts,
 } from "./api/products.service";

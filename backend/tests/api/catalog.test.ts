@@ -33,6 +33,18 @@ describe("API without database", () => {
     const res = await request(app).get("/api/v1/products?limit=1000");
     expect(res.status).toBe(400);
   });
+
+  it("rejects a malformed category", async () => {
+    const res = await request(app).get("/api/v1/products?category=Not_A_Slug");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("rejects an unknown sort", async () => {
+    const res = await request(app).get("/api/v1/products?sort=price");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
 });
 
 // Requires TEST_DATABASE_URL pointing at a migrated and seeded database.
@@ -84,6 +96,49 @@ describe.skipIf(!hasDatabase)("catalog API (seeded database)", () => {
     for (const product of res.body.data) {
       expect(ProductDto.safeParse(product).success).toBe(true);
     }
+  });
+
+  it("GET /products?sort=newest lists the most recently added first", async () => {
+    const catalog = await request(app).get("/api/v1/products?limit=100");
+    const newest = await request(app).get("/api/v1/products?limit=100&sort=newest");
+    expect(newest.status).toBe(200);
+    expect(newest.body.meta).toEqual({ page: 1, limit: 100, total: 12 });
+    // The seed inserts every product in one transaction (same created_at),
+    // so the id tie-break makes this the reverse of catalog order.
+    const slugs = (res: typeof catalog) =>
+      res.body.data.map((p: { slug: string }) => p.slug);
+    expect(slugs(newest)).toEqual(slugs(catalog).reverse());
+  });
+
+  it("GET /products?category lists only that category", async () => {
+    const res = await request(app).get("/api/v1/products?category=shoes");
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((p: { slug: string }) => p.slug)).toEqual([
+      "double-monk-strap-shoe",
+      "suede-wingtip-brogue",
+      "floral-satin-pumps",
+    ]);
+    expect(res.body.meta).toEqual({ page: 1, limit: 24, total: 3 });
+  });
+
+  it("GET /products?category returns an empty page for unknown categories", async () => {
+    const res = await request(app).get("/api/v1/products?category=does-not-exist");
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+    expect(res.body.meta.total).toBe(0);
+  });
+
+  it("GET /categories/:slug returns the category DTO", async () => {
+    const res = await request(app).get("/api/v1/categories/jewelry");
+    expect(res.status).toBe(200);
+    expect(CategoryDto.safeParse(res.body.data).success).toBe(true);
+    expect(res.body.data).toMatchObject({ slug: "jewelry", title: "Jewelry" });
+  });
+
+  it("GET /categories/:slug returns 404 for unknown categories", async () => {
+    const res = await request(app).get("/api/v1/categories/does-not-exist");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
   });
 
   it("GET /products/:slug/related puts the same category first", async () => {

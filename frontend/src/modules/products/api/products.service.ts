@@ -39,6 +39,33 @@ export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
   return data.data;
 }
 
+/** The most recently added products, newest first ("New In"). */
+export async function getNewArrivals(limit = 24): Promise<Product[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("catalog");
+
+  const { data } = await serverApi.get<ProductListResponse>("/products", {
+    params: { sort: "newest", limit },
+  });
+  return data.data;
+}
+
+/** One category's products, in catalog order ("/collections/<category>"). */
+export async function getProductsByCategory(
+  categorySlug: string,
+  limit = 24,
+): Promise<Product[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("catalog", `category:${categorySlug}`);
+
+  const { data } = await serverApi.get<ProductListResponse>("/products", {
+    params: { category: categorySlug, limit },
+  });
+  return data.data;
+}
+
 /** Same-category products first, then the rest of the catalog. */
 export async function getRelatedProducts(slug: string, limit = 4): Promise<Product[]> {
   "use cache";

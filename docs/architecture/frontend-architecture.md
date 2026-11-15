@@ -9,6 +9,8 @@ frontend/src/
 ├── app/                          # routing only
 │   ├── layout.tsx  globals.css  not-found.tsx  error.tsx
 │   ├── page.tsx                  # → @/modules/home
+│   ├── collections/new-in/page.tsx  # metadata → @/modules/products (NewArrivalsPage)
+│   ├── collections/[slug]/page.tsx  # category pages: params, metadata, Suspense → categories + products
 │   └── products/[slug]/page.tsx  # params, metadata, Suspense → @/modules/products
 ├── modules/
 │   ├── home/        components/, content.ts (editorial copy, curated slug lists), index.ts

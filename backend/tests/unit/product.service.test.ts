@@ -81,10 +81,39 @@ describe("productService.list", () => {
     repo.findPage.mockResolvedValue([]);
     repo.count.mockResolvedValue(30);
 
-    const result = await productService.list(3, 10);
+    const result = await productService.list({ page: 3, limit: 10 });
 
-    expect(repo.findPage).toHaveBeenCalledWith(20, 10);
+    expect(repo.findPage).toHaveBeenCalledWith(20, 10, {
+      order: "catalog",
+      categorySlug: undefined,
+    });
     expect(result.meta).toEqual({ page: 3, limit: 10, total: 30 });
+  });
+
+  it("passes the newest-first order to the repository", async () => {
+    repo.findPage.mockResolvedValue([]);
+    repo.count.mockResolvedValue(0);
+
+    await productService.list({ page: 1, limit: 24, sort: "newest" });
+
+    expect(repo.findPage).toHaveBeenCalledWith(0, 24, {
+      order: "newest",
+      categorySlug: undefined,
+    });
+  });
+
+  it("filters both the page and the total by category", async () => {
+    repo.findPage.mockResolvedValue([]);
+    repo.count.mockResolvedValue(2);
+
+    const result = await productService.list({ page: 1, limit: 24, category: "shoes" });
+
+    expect(repo.findPage).toHaveBeenCalledWith(0, 24, {
+      order: "catalog",
+      categorySlug: "shoes",
+    });
+    expect(repo.count).toHaveBeenCalledWith({ categorySlug: "shoes" });
+    expect(result.meta).toEqual({ page: 1, limit: 24, total: 2 });
   });
 });
 
