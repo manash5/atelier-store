@@ -46,8 +46,18 @@ export const cartItems = pgTable(
   ],
 );
 
-/** Payments are simulated for now, so every placed order is `paid`. */
-export const orderStatus = pgEnum("order_status", ["paid", "cancelled"]);
+/**
+ * Payments are simulated, so orders start as `paid`. Admins then move them
+ * forward (processing → shipped → delivered) or cancel them before shipping,
+ * which restocks the items (ADR-016).
+ */
+export const orderStatus = pgEnum("order_status", [
+  "paid",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+]);
 
 /** Shipping address captured at checkout. */
 export type ShippingAddressData = {
@@ -83,6 +93,8 @@ export const orders = pgTable(
   },
   (table) => [
     index("orders_user_id_idx").on(table.userId),
+    // Admin order list: newest first across all users.
+    index("orders_created_at_idx").on(table.createdAt.desc(), table.id.desc()),
     check("orders_total_nonnegative", sql`${table.total} >= 0`),
   ],
 );
@@ -113,8 +125,9 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
   product: one(products, { fields: [cartItems.productId], references: [products.id] }),
 }));
 
-export const ordersRelations = relations(orders, ({ many }) => ({
+export const ordersRelations = relations(orders, ({ many, one }) => ({
   items: many(orderItems),
+  user: one(user, { fields: [orders.userId], references: [user.id] }),
 }));
 
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({

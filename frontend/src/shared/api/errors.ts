@@ -7,6 +7,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: ErrorCode | "NETWORK_ERROR",
     message: string,
+    /** e.g. `[{ path: "price", message: "..." }]` for VALIDATION_ERROR. */
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -33,8 +35,8 @@ export function toApiError(error: unknown): Promise<never> {
       );
     }
     if (isErrorBody(response.data)) {
-      const { code, message } = response.data.error;
-      return Promise.reject(new ApiError(response.status, code, message));
+      const { code, message, details } = response.data.error;
+      return Promise.reject(new ApiError(response.status, code, message, details));
     }
     return Promise.reject(
       new ApiError(response.status, "INTERNAL_ERROR", `API request failed (${response.status})`),

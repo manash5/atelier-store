@@ -71,7 +71,7 @@ export async function ProductDetail({ product, addToBag }: ProductDetailProps) {
                   <button type="button" className="btn btn-primary w-full" disabled>
                     Sold out
                   </button>
-                  <Link href="/client-services" className="btn btn-secondary w-full">
+                  <Link href="/services/appointments" className="btn btn-secondary w-full">
                     Contact a client advisor
                   </Link>
                 </>

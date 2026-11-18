@@ -1,5 +1,6 @@
 // Public UI and types. Server-only data access lives in ./server.
-export { giftSlugs } from "./content";
+export { editorialEdits, type EditorialEditKey, giftSlugs } from "./content";
+export { EditorialCollectionPage } from "./components/editorial-collection-page";
 export { GenderCollectionPage } from "./components/gender-collection-page";
 export { GiftsPage } from "./components/gifts-page";
 export { NewArrivalsPage } from "./components/new-arrivals-page";

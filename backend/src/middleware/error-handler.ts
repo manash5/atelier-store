@@ -14,6 +14,45 @@ function clientStatus(error: unknown): number | undefined {
   return undefined;
 }
 
+/** Postgres error (node-postgres `DatabaseError`), possibly wrapped by Drizzle. */
+type PgError = { code: string; constraint?: string };
+
+function findPgError(error: unknown): PgError | undefined {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current; depth++) {
+    if (
+      typeof current === "object" &&
+      typeof (current as { code?: unknown }).code === "string" &&
+      /^[0-9A-Z]{5}$/.test((current as { code: string }).code)
+    ) {
+      return current as PgError;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
+/**
+ * Constraint violations that slipped past service-level checks (e.g. two
+ * admins saving the same slug at once) become client errors, not 500s.
+ */
+function fromConstraintViolation(error: unknown): AppError | undefined {
+  const pg = findPgError(error);
+  if (!pg) return undefined;
+  const details = pg.constraint ? [{ path: pg.constraint, message: pg.code }] : undefined;
+  switch (pg.code) {
+    case "23505":
+      return new AppError(409, "CONFLICT", "A record with this value already exists", details);
+    case "23503":
+      return new AppError(409, "CONFLICT", "This record is still referenced by other data", details);
+    case "23514":
+    case "23502":
+      return new AppError(400, "VALIDATION_ERROR", "The data breaks a database rule", details);
+    default:
+      return undefined;
+  }
+}
+
 /**
  * Development-only description of an unexpected error. Wrapper errors (e.g.
  * Drizzle's "Failed query: <sql>") hide the real reason in `cause`, so report
@@ -32,7 +71,7 @@ function describe(error: unknown): string {
 }
 
 export const errorHandler: ErrorRequestHandler = (thrown, req, res, _next) => {
-  const error: unknown = toUploadError(thrown) ?? thrown;
+  const error: unknown = toUploadError(thrown) ?? fromConstraintViolation(thrown) ?? thrown;
   let status: number;
   let body: ApiErrorBody;
 

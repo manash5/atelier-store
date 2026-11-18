@@ -53,8 +53,8 @@ type Feature = {
 
 export const editorialStory = {
   eyebrow: "The Knitwear Story",
-  title: "Made to be worn for decades",
-  body: "Each sweater is knitted slowly on traditional frames from undyed and naturally dyed yarns, then hand-finished at the seams. The result is softer with every wear and built to outlast the season it was made for.",
+  title: "Knit and layered for cooler evenings",
+  body: "An open-stitch cotton poncho, brushed cotton jersey and a double-faced wool coat to wear over both. Each is finished by hand and made to soften with every wear, long after the season it was made for.",
   href: "/collections/knitwear",
   cta: "Discover knitwear",
   image: {

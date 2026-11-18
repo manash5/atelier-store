@@ -6,7 +6,7 @@ import { formatPrice } from "@/shared/lib/format-price";
 import { SectionHeading } from "@/shared/ui/section-heading";
 
 import { getCart, getRecentOrders } from "../api/cart.service";
-import type { Cart, Order } from "../types";
+import { type Cart, type Order, ORDER_STATUS_LABEL } from "../types";
 
 const PREVIEW_LIMIT = 4;
 const dateFormat = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
@@ -105,7 +105,7 @@ function RecentOrders({ orders }: { orders: Order[] }) {
                 {dateFormat.format(new Date(order.createdAt))}
               </span>
               <span className="text-ink-muted">
-                {order.itemCount} {order.itemCount === 1 ? "item" : "items"}
+                {order.itemCount} {order.itemCount === 1 ? "item" : "items"} · {ORDER_STATUS_LABEL[order.status]}
               </span>
               <span className="text-right">{formatPrice(order.total)}</span>
             </Link>

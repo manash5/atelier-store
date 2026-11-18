@@ -56,7 +56,7 @@ Defined in `schema/commerce.ts` (ADR-015).
 | Table | Purpose | Notes |
 |---|---|---|
 | `cart_items` | One row per (user, product) in a user's bag | `quantity > 0`; unique `(user_id, product_id)`; cascades when the user or product is deleted. Prices are **not** stored: the bag always shows live prices and stock |
-| `orders` | A placed order | `number` (public `AT-XXXXXXXX`, unique), `status` (`paid`, `cancelled`), `email`, `shipping_address` (jsonb), `subtotal`/`shipping`/`total` in minor units, `currency`, `payment_last4` (simulated payment) |
+| `orders` | A placed order | `number` (public `AT-XXXXXXXX`, unique), `status` (`paid`, `processing`, `shipped`, `delivered`, `cancelled`; see ADR-016), `email`, `shipping_address` (jsonb), `subtotal`/`shipping`/`total` in minor units, `currency`, `payment_last4` (simulated payment) |
 | `order_items` | Snapshot of each line at purchase time | `product_slug`, `name`, `color_name`, `image`, `unit_price`, `quantity`; `product_id` becomes null if the product is later deleted |
 
 Placing an order runs in one transaction: for each line (in product id order, to avoid deadlocks), `UPDATE products SET stock = stock - qty WHERE id = ? AND stock >= qty`. If any update matches no row, the transaction rolls back and nothing is written. Otherwise the order and its items are inserted and the user's cart rows are deleted.
@@ -68,9 +68,13 @@ Placing an order runs in one transaction: for each line (in product id order, to
 - The `jwt` plugin's `jwks` table holds the key pairs that sign access tokens; the first one is created on the first token request. Private keys are encrypted with `BETTER_AUTH_SECRET`, so rotating the secret invalidates them.
 - Passwords are hashed by Better Auth in `account.password`.
 
+## Client services tables
+
+`schema/services.ts` (ADR-017): `appointment_requests` stores booking-form submissions: `name`, `email` (lower-cased), `phone`, `type` (`appointment_type`: `in_store`, `video`), `preferred_date` (date, optional), `note` (optional), `status` (`appointment_status`: `new`, `contacted`), `user_id` (set when a signed-in customer booked; `ON DELETE SET NULL`, so requests outlive accounts) and timestamps. Index `appointment_requests_created_at_idx` serves the newest-first admin list.
+
 ## Migrations
 
-The history starts at `0000_catalog` (catalog tables), then `0001_auth` (Better Auth tables), `0002_product_gender` (the `gender` column), `0003_auth_jwt_admin` (`jwks` table, admin columns) and `0004_cart_orders` (`cart_items`, `orders`, `order_items`). There were no migrations before the frontend/backend split.
+The history starts at `0000_catalog` (catalog tables), then `0001_auth` (Better Auth tables), `0002_product_gender` (the `gender` column), `0003_auth_jwt_admin` (`jwks` table, admin columns) `0004_cart_orders` (`cart_items`, `orders`, `order_items`) `0005_order_fulfillment` (`processing`, `shipped` and `delivered` order statuses; `orders_created_at_idx` for the admin order list) and `0006_appointment_requests` (booking requests). There were no migrations before the frontend/backend split.
 
 Workflow (in `backend/`):
 
@@ -90,8 +94,9 @@ Rules:
 
 ## Seed
 
-- `npm run db:seed` upserts 5 categories and 27 products by `slug` inside one transaction.
-- Re-running it updates rows in place and never deletes.
+- `npm run db:seed` inserts any of the 5 categories and 27 products that are missing, inside one transaction. Existing rows (and anything admins changed, including stock) are left alone.
+- `npm run db:seed -- --reset` also overwrites seeded rows with the seed data. Development only: it undoes admin edits and sales.
+- It never deletes.
 - The seed data keeps prices in whole units for readability and converts them to cents on insert.
 - Use only unbranded images (no visible logos or labels).
-- When `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, it signs up that account through Better Auth if it doesn't exist and sets its role to `admin`. An existing account keeps its password.
+- When `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, it signs up that account through Better Auth if it doesn't exist and makes it an admin. An existing account is promoted only if `ADMIN_PASSWORD` matches its password; further admins are managed in the dashboard.

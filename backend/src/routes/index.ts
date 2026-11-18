@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { adminRouter } from "./admin.routes";
+import { appointmentRouter } from "./appointment.routes";
 import { cartRouter } from "./cart.routes";
 import { categoryRouter } from "./category.routes";
 import { meRouter } from "./me.routes";
@@ -15,6 +16,7 @@ apiRouter.use("/categories", categoryRouter);
 apiRouter.use("/me", meRouter);
 apiRouter.use("/cart", cartRouter);
 apiRouter.use("/orders", orderRouter);
+apiRouter.use("/appointments", appointmentRouter);
 apiRouter.use("/admin", adminRouter);
 
 export { healthRouter } from "./health.routes";

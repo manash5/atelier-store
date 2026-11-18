@@ -68,6 +68,7 @@ Express 5 forwards rejected promises to the error handler, so there are no `try/
 - `errorHandler` turns them into `{ "error": { "code", "message", "details"? } }`.
 - Body-parser errors become 400 `BAD_REQUEST`.
 - Multer errors (file too large, unexpected field) become 400 `VALIDATION_ERROR`.
+- Postgres constraint violations (found in Drizzle's `cause` chain) become 409 `CONFLICT` (unique 23505, foreign key 23503) or 400 `VALIDATION_ERROR` (check 23514, not-null 23502). Services should still pre-check for clear messages.
 - Anything else becomes a 500 `INTERNAL_ERROR`. It is logged with the request id, and production responses get a generic message.
 
 ## Validation
@@ -88,7 +89,9 @@ Express 5 forwards rejected promises to the error handler, so there are no `try/
 - `lib/jwt.ts` `verifyAccessToken()` checks signature, issuer, audience, expiry and claims with `jose`, using keys from `auth.api.getJwks()` (cached; reloaded when a token names an unknown key).
 - `middleware/auth.middleware.ts`:
   - `authorize` reads the `Authorization` header, requires `Bearer <token>`, verifies it and sets `req.user` (the decoded claims). Each failure is a 401 `UNAUTHORIZED`.
-  - `authorizeAdmin` runs after `authorize` and returns 403 `FORBIDDEN` unless `req.user.role === "admin"`.
+  - `authorizeAdmin` runs after `authorize`: 403 unless the token's role is `admin`, then it re-reads the user (`userService.assertActiveAdmin`) so demoted or suspended admins are refused immediately.
+  - `auditAdminWrites` logs every non-GET admin request (actor, method, path, status).
+- Better Auth's `/api/auth/admin/*` endpoints are blocked in `app.ts` (404); admin features live under `/api/v1/admin` (ADR-016).
 - `middleware/upload.middleware.ts` exports `uploadImage` (multer, disk storage in `UPLOAD_DIR`, one image in field `image`, JPEG/PNG/WebP/AVIF, ≤ 5 MB, random UUID filenames). Mount it after the auth middleware so rejected requests never write files.
 - Routes attach the middleware; resource-level authorization decisions (e.g. "owns this order") belong in services.
 - The seed creates or promotes the admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD`.

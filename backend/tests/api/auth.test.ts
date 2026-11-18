@@ -51,6 +51,23 @@ describe("protected routes (signed test tokens, no database)", () => {
     vi.spyOn(auth.api, "getJwks").mockResolvedValue(keys.jwks as never);
   });
 
+  /** Admin routes re-check the database: pretend admin-1 is an active admin. */
+  function asActiveAdmin() {
+    vi.spyOn(userRepository, "findById").mockResolvedValue({
+      id: "admin-1",
+      name: "Admin",
+      email: "admin@example.com",
+      emailVerified: true,
+      image: null,
+      role: "admin",
+      banned: false,
+      banReason: null,
+      banExpires: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    });
+  }
+
   describe("GET /api/v1/me", () => {
     it("returns 401 without a token", async () => {
       const res = await request(app).get("/api/v1/me");
@@ -105,6 +122,7 @@ describe("protected routes (signed test tokens, no database)", () => {
 
   describe("POST /api/v1/admin/uploads", () => {
     const upload = () => request(app).post("/api/v1/admin/uploads");
+    beforeEach(asActiveAdmin);
 
     it("returns 401 without a token", async () => {
       const res = await upload().attach("image", PNG, {
@@ -170,6 +188,100 @@ describe("protected routes (signed test tokens, no database)", () => {
         .field("note", "no file");
       expect(res.status).toBe(400);
       expect(res.body.error.message).toBe("No image was uploaded");
+    });
+  });
+});
+
+describe("admin surface (no database)", () => {
+  it.each(["/api/auth/admin/list-users", "/api/auth/admin/impersonate-user", "/api/auth/admin/set-role"])(
+    "blocks Better Auth's admin endpoint %s",
+    async (path) => {
+      const res = await request(app).post(path).send({});
+      expect(res.status).toBe(404);
+    },
+  );
+
+  it.each([
+    ["get", "/api/v1/admin/overview"],
+    ["get", "/api/v1/admin/products"],
+    ["post", "/api/v1/admin/products"],
+    ["put", "/api/v1/admin/products/silk-scarf/stock"],
+    ["get", "/api/v1/admin/orders"],
+    ["patch", "/api/v1/admin/orders/AT-ABCDEFGH/status"],
+    ["get", "/api/v1/admin/users"],
+    ["patch", "/api/v1/admin/users/abc/role"],
+  ] as const)("%s %s requires a token", async (method, path) => {
+    const res = await request(app)[method](path);
+    expect(res.status).toBe(401);
+  });
+
+  describe("with tokens", () => {
+    let keys: TestKeys;
+
+    beforeAll(async () => {
+      keys = await createTestKeys();
+    });
+
+    beforeEach(() => {
+      vi.restoreAllMocks();
+      resetKeyCache();
+      vi.spyOn(auth.api, "getJwks").mockResolvedValue(keys.jwks as never);
+    });
+
+    const activeUser = (role: "admin" | "user") => ({
+      id: "u1",
+      name: "Ada",
+      email: "ada@example.com",
+      emailVerified: true,
+      image: null,
+      role,
+      banned: false,
+      banReason: null,
+      banExpires: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    });
+
+    it("forbids customers", async () => {
+      const token = await keys.sign({ email: "ada@example.com", name: "Ada", role: "user" }, { subject: "u1" });
+      const res = await request(app).get("/api/v1/admin/orders").set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+    });
+
+    it("forbids an admin token once the account was demoted", async () => {
+      vi.spyOn(userRepository, "findById").mockResolvedValue(activeUser("user"));
+      const token = await keys.sign({ email: "ada@example.com", name: "Ada", role: "admin" }, { subject: "u1" });
+      const res = await request(app).get("/api/v1/admin/orders").set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+      expect(res.body.error.message).toBe("Admin access required");
+    });
+
+    it.each([
+      ["an unknown status", "patch", "/api/v1/admin/orders/AT-ABCDEFGH/status", { status: "lost" }],
+      ["negative stock", "put", "/api/v1/admin/products/silk-scarf/stock", { stock: -1, expectedStock: 2 }],
+      ["an unknown role", "patch", "/api/v1/admin/users/abc/role", { role: "owner" }],
+      [
+        "an image from another host",
+        "post",
+        "/api/v1/admin/products",
+        {
+          slug: "x",
+          name: "X",
+          styleNumber: "X1",
+          categorySlug: "bags",
+          price: 100,
+          color: { name: "Red", hex: "#ff0000" },
+          description: "d",
+          images: [{ src: "https://evil.example/a.jpg", alt: "a" }],
+        },
+      ],
+      ["an empty product update", "patch", "/api/v1/admin/products/silk-scarf", {}],
+    ] as const)("rejects %s", async (_label, method, path, body) => {
+      vi.spyOn(userRepository, "findById").mockResolvedValue(activeUser("admin"));
+      const token = await keys.sign({ email: "ada@example.com", name: "Ada", role: "admin" }, { subject: "u1" });
+      const res = await request(app)[method](path).set("Authorization", `Bearer ${token}`).send(body);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("VALIDATION_ERROR");
     });
   });
 });

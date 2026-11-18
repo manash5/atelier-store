@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { getOrder } from "../api/cart.service";
+import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from "../types";
 import { OrderItemList } from "./order-item-list";
 import { OrderTotals } from "./order-totals";
 
@@ -84,8 +85,8 @@ async function OrderContent({ params }: { params: Promise<{ number: string }> })
               <div className="flex justify-between gap-4">
                 <dt className="text-ink-muted">Status</dt>
                 <dd className="flex items-center gap-2">
-                  <span aria-hidden="true" className="size-2 rounded-full bg-success" />
-                  {order.status === "paid" ? "Paid" : "Cancelled"}
+                  <span aria-hidden="true" className={`size-2 rounded-full ${ORDER_STATUS_TONE[order.status]}`} />
+                  {ORDER_STATUS_LABEL[order.status]}
                 </dd>
               </div>
             </dl>

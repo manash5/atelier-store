@@ -1,12 +1,12 @@
 "use server";
 
+import { decodeJwt } from "jose";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { isApiError } from "@/shared/api/errors";
 import {
   clearAuthCookieJar,
-  getAccessToken,
   getSessionCookieHeader,
   storeAccessToken,
   storeBackendCookies,
@@ -20,14 +20,12 @@ import {
   type AuthResult,
   type ForwardedHeaders,
 } from "./api/auth.service";
-import { uploadAdminImage } from "./api/me.service";
 import { safeRedirect } from "./lib/safe-redirect";
-import type { AuthFormState, UploadFormState } from "./types";
+import type { AuthFormState } from "./types";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
 const MAX_PASSWORD = 128;
-const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 /** Origin, user agent and client IP of the visitor, for Better Auth. */
 async function forwardedHeaders(): Promise<ForwardedHeaders> {
@@ -55,15 +53,29 @@ function failure(result: AuthResult, fallback: string): string {
 /**
  * Stores the session cookie from a successful sign-in/up and exchanges it for
  * the first access token, so the next page can call the API straight away.
+ * Returns the access token's role claim (null if no token was issued).
  */
-async function startSession(result: AuthResult, forwarded: ForwardedHeaders) {
+async function startSession(result: AuthResult, forwarded: ForwardedHeaders): Promise<string | null> {
   await storeBackendCookies(result.setCookie);
 
   const cookie = await getSessionCookieHeader();
-  if (!cookie) return;
+  if (!cookie) return null;
   const token = await fetchAccessToken({ ...forwarded, cookie });
-  if (token.data?.token) await storeAccessToken(token.data.token);
   await storeBackendCookies(token.setCookie);
+  if (!token.data?.token) return null;
+  await storeAccessToken(token.data.token);
+  const role = decodeJwt(token.data.token).role;
+  return typeof role === "string" ? role : null;
+}
+
+/**
+ * Where to go after signing in: the requested page, else the admin overview
+ * for admins and the account page for customers.
+ */
+function destination(next: FormDataEntryValue | null, role: string | null): string {
+  const requested = typeof next === "string" && next ? next : null;
+  if (role === "admin" && (requested === null || requested === "/account")) return "/admin";
+  return safeRedirect(requested);
 }
 
 export async function signInAction(
@@ -91,8 +103,8 @@ export async function signInAction(
   if (result.status === 401) return { error: "Incorrect email or password.", values };
   if (result.status >= 400) return { error: failure(result, "Couldn't sign you in."), values };
 
-  await startSession(result, forwarded);
-  redirect(safeRedirect(formData.get("next")));
+  const role = await startSession(result, forwarded);
+  redirect(destination(formData.get("next"), role));
 }
 
 export async function signUpAction(
@@ -144,24 +156,4 @@ export async function signOutAction(): Promise<void> {
   }
   await clearAuthCookieJar();
   redirect("/");
-}
-
-export async function uploadImageAction(
-  _previous: UploadFormState,
-  formData: FormData,
-): Promise<UploadFormState> {
-  // Server Functions are reachable by POST from anywhere: check here too,
-  // not only in proxy.ts. The backend makes the final admin decision.
-  if (!(await getAccessToken())) return { error: "Your session has expired. Please sign in again." };
-
-  const file = formData.get("image");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image to upload." };
-  if (file.size > MAX_UPLOAD_BYTES) return { error: "Images must be 5 MB or smaller." };
-
-  try {
-    return { upload: await uploadAdminImage(file) };
-  } catch (error) {
-    if (isApiError(error)) return { error: error.message };
-    throw error;
-  }
 }

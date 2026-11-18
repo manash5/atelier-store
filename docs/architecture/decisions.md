@@ -142,3 +142,33 @@ Trade-off: files live on the API host's disk, so they don't survive an ephemeral
 - After an order, the storefront calls `updateTag("catalog")` so product pages show the new stock immediately.
 
 Trade-offs: the bag doesn't reserve stock, so an item can sell out between adding and paying (the shopper sees why). There are no cancellations, refunds or emails yet.
+
+## ADR-016: Admin dashboard
+**Status:** accepted (extends ADR-013 and ADR-015)
+
+The admin side manages the catalog, stock, orders and admin access. It is built on the existing `/api/v1/admin` router, not a parallel mechanism.
+
+- **Access:** `authorize` checks the token's `role` claim, then `authorizeAdmin` re-reads the user (`role === "admin"`, not banned) on every admin request. Demotions and bans take effect immediately on admin routes, not after the 15-minute token lifetime. Better Auth's built-in `/api/auth/admin/*` endpoints (impersonation, password resets, deletion, role changes) are disabled; nothing used them.
+- **Admins are managed in the dashboard.** Admins can't remove their own access, and the last admin can't be demoted. The seed only creates the first admin, and it promotes an existing account only if `ADMIN_PASSWORD` is that account's password.
+- **Catalog:** products and categories can be created and edited, never deleted. Slugs are fixed at creation, because they are URLs, cache tags and order snapshots.
+- **Stock:** admins set an exact number with an optimistic check (`expectedStock`). If an order changed the stock meanwhile, the save is refused (409), so a sale is never overwritten. This and order cancellation are the only places besides checkout that change stock (this supersedes ADR-015's "only ever decremented").
+- **Orders:** `paid → processing → shipped → delivered`, and `cancelled` from paid or processing only. Status changes are conditional on the status that was read, so double submissions can't apply twice. Cancelling restocks every item whose product still exists, in the same transaction.
+- **Seed:** `db:seed` now only inserts missing rows, so admin edits and sales survive a re-run. `db:seed -- --reset` restores seeded rows (development only).
+- **Writes:** every admin write is audit-logged through the request logger, and storefront server actions expire the `catalog` cache tag after catalog, stock and cancellation changes.
+
+Trade-offs:
+- There's no stock history or reason codes, and no durable audit table (logs only).
+- Deleting a user still cascades to their orders. The dashboard doesn't delete users, but the database rule is unchanged.
+- Customers aren't notified of status changes (no email yet).
+
+## ADR-017: Public appointment requests
+**Status:** accepted
+
+The booking page (`/services/appointments`) lets anyone, signed in or not, leave their name, email and phone (plus in-store/video, an optional date and a note) so a client advisor can call back. It is the first public write endpoint.
+
+- `POST /api/v1/appointments` needs no token. `optionalAuthorize` links the request to the account when a valid bearer token is sent and ignores an invalid one.
+- Spam control: `appointmentRateLimit` allows 5 requests per IP per 15 minutes. The storefront submits from a server action, so it forwards the visitor's `X-Forwarded-For`; otherwise every visitor would share the storefront server's IP.
+- The response is a receipt (id, type, date), never the stored contact details.
+- Requests are handled in the admin portal (`/admin/appointments`): search, filter and mark `contacted`. The overview shows how many are `new`.
+
+Trade-offs: no confirmation email, calendar booking or CAPTCHA yet; per-IP limits can be shared behind corporate NATs.

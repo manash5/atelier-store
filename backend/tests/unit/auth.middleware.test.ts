@@ -5,6 +5,8 @@ import { ForbiddenError, UnauthorizedError } from "../../src/exceptions";
 import { auth } from "../../src/lib/auth";
 import { resetKeyCache, verifyAccessToken } from "../../src/lib/jwt";
 import { authorize, authorizeAdmin } from "../../src/middleware/auth.middleware";
+import type { User } from "../../src/models/user";
+import { userRepository } from "../../src/repositories/user.repository";
 import { createTestKeys, type TestKeys } from "../helpers/tokens";
 
 let keys: TestKeys;
@@ -96,21 +98,54 @@ describe("authorize", () => {
 });
 
 describe("authorizeAdmin", () => {
-  function check(user?: Request["user"]) {
+  const dbUser = (overrides: Partial<User> = {}): User => ({
+    id: "u",
+    name: "Ada",
+    email: "ada@example.com",
+    emailVerified: true,
+    image: null,
+    role: "admin",
+    banned: false,
+    banReason: null,
+    banExpires: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    ...overrides,
+  });
+
+  async function check(user?: Request["user"]) {
     const next = vi.fn();
-    authorizeAdmin({ user } as Request, {} as Response, next);
+    await authorizeAdmin({ user } as Request, {} as Response, next);
     return next;
   }
 
-  it("requires authorize to have run", () => {
-    expect(() => check()).toThrow(UnauthorizedError);
+  it("requires authorize to have run", async () => {
+    await expect(check()).rejects.toBeInstanceOf(UnauthorizedError);
   });
 
-  it("forbids non-admins", () => {
-    expect(() => check({ sub: "u", ...claims, role: "user" })).toThrow(ForbiddenError);
+  it("forbids non-admin tokens without touching the database", async () => {
+    const findById = vi.spyOn(userRepository, "findById");
+    await expect(check({ sub: "u", ...claims, role: "user" })).rejects.toBeInstanceOf(ForbiddenError);
+    expect(findById).not.toHaveBeenCalled();
   });
 
-  it("lets admins through", () => {
-    expect(check({ sub: "u", ...claims, role: "admin" })).toHaveBeenCalledOnce();
+  it("lets active admins through", async () => {
+    vi.spyOn(userRepository, "findById").mockResolvedValue(dbUser());
+    expect(await check({ sub: "u", ...claims, role: "admin" })).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an admin token for someone demoted since it was issued", async () => {
+    vi.spyOn(userRepository, "findById").mockResolvedValue(dbUser({ role: "user" }));
+    await expect(check({ sub: "u", ...claims, role: "admin" })).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("rejects an admin token for a suspended account", async () => {
+    vi.spyOn(userRepository, "findById").mockResolvedValue(dbUser({ banned: true }));
+    await expect(check({ sub: "u", ...claims, role: "admin" })).rejects.toThrow("Account is suspended");
+  });
+
+  it("rejects an admin token for a deleted account", async () => {
+    vi.spyOn(userRepository, "findById").mockResolvedValue(null);
+    await expect(check({ sub: "u", ...claims, role: "admin" })).rejects.toBeInstanceOf(UnauthorizedError);
   });
 });

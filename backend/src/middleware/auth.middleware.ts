@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 
 import { ForbiddenError, UnauthorizedError } from "../exceptions";
 import { verifyAccessToken } from "../lib/jwt";
+import { userService } from "../services/user.service";
 
 const BEARER = /^Bearer\s+(\S+)$/i;
 
@@ -26,9 +27,47 @@ export const authorize: RequestHandler = async (req, _res, next) => {
   next();
 };
 
-/** Requires an admin. Mount after `authorize`. */
-export const authorizeAdmin: RequestHandler = (req, _res, next) => {
+/**
+ * For public routes that also serve signed-in users: a valid Bearer token
+ * sets `req.user`; a missing or invalid one is ignored (the caller is a guest).
+ */
+export const optionalAuthorize: RequestHandler = async (req, _res, next) => {
+  const token = BEARER.exec(req.headers.authorization ?? "")?.[1];
+  if (token) {
+    const decoded = await verifyAccessToken(token);
+    if (decoded) req.user = decoded;
+  }
+  next();
+};
+
+/**
+ * Requires an admin. Mount after `authorize`. The token's role claim is
+ * checked first (cheap), then the database, so a demoted or banned admin
+ * loses access at once rather than when their token expires.
+ */
+export const authorizeAdmin: RequestHandler = async (req, _res, next) => {
   if (!req.user) throw new UnauthorizedError("Authentication required");
   if (req.user.role !== "admin") throw new ForbiddenError("Admin access required");
+  await userService.assertActiveAdmin(req.user.sub);
+  next();
+};
+
+/** Logs every admin write (who, what, outcome) once the response is sent. */
+export const auditAdminWrites: RequestHandler = (req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.on("finish", () => {
+      req.log.info(
+        {
+          audit: true,
+          actor: req.user?.sub,
+          actorEmail: req.user?.email,
+          method: req.method,
+          path: req.originalUrl,
+          status: res.statusCode,
+        },
+        "Admin write",
+      );
+    });
+  }
   next();
 };

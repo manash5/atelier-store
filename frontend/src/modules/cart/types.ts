@@ -53,10 +53,29 @@ export type OrderItem = {
   lineTotal: Money;
 };
 
+/** Paid at checkout; then processing → shipped → delivered, or cancelled before shipping. */
+export type OrderStatus = "paid" | "processing" | "shipped" | "delivered" | "cancelled";
+
+export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  paid: "Paid",
+  processing: "Being prepared",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  cancelled: "Cancelled",
+};
+
+export const ORDER_STATUS_TONE: Record<OrderStatus, string> = {
+  paid: "bg-success",
+  processing: "bg-success",
+  shipped: "bg-success",
+  delivered: "bg-success",
+  cancelled: "bg-ink-subtle",
+};
+
 /** GET /api/v1/orders/:number */
 export type Order = {
   number: string;
-  status: "paid" | "cancelled";
+  status: OrderStatus;
   createdAt: string;
   email: string;
   shippingAddress: ShippingAddress;

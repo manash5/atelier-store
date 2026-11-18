@@ -32,7 +32,8 @@ export type ShippingAddressDto = z.infer<typeof ShippingAddressDto>;
    Response shapes
    -------------------------------------------------------------------------- */
 
-export const OrderStatus = z.enum(["paid", "cancelled"]);
+export const OrderStatus = z.enum(["paid", "processing", "shipped", "delivered", "cancelled"]);
+export type OrderStatusDto = z.infer<typeof OrderStatus>;
 
 export const OrderItemDto = z.object({
   productSlug: Slug,

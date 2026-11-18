@@ -56,7 +56,7 @@ Each app reads its own `.env.local`. `.env.example` templates live next to each 
 | backend | `BETTER_AUTH_SECRET` | private | ≥ 32 chars (`openssl rand -base64 32`) |
 | backend | `BETTER_AUTH_URL` | private | public **storefront** origin; also the JWT issuer and audience |
 | backend | `UPLOAD_DIR` | private | where uploaded files are stored; default `uploads` (relative to `backend/`) |
-| backend | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | private | optional; `npm run db:seed` creates this account (if missing) and gives it the admin role. Password ≥ 8 chars |
+| backend | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | private | optional; `npm run db:seed` creates this first admin (an existing account is promoted only if the password matches). Further admins are managed at `/admin/admins`. Password ≥ 8 chars |
 | frontend | `BACKEND_URL` | server-only | e.g. `http://localhost:4000`. Used by server Axios and rewrites; never prefix with `NEXT_PUBLIC_` |
 | frontend | `NEXT_PUBLIC_APP_URL` | public | storefront origin |
 

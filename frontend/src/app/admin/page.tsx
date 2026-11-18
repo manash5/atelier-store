@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
 
-import { AdminPage } from "@/modules/auth";
+import { AdminOverviewPage } from "@/modules/admin";
 
-export const metadata: Metadata = {
-  title: "Admin",
-  robots: { index: false },
-};
+export const metadata: Metadata = { title: "Admin", robots: { index: false } };
 
 export default function Page() {
-  return <AdminPage />;
+  return <AdminOverviewPage />;
 }

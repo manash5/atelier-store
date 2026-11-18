@@ -1,11 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bodoni_Moda, Inter } from "next/font/google";
-import { Suspense } from "react";
 
-import { BagCount } from "@/modules/cart";
-
-import { SiteFooter } from "@/shared/layout/site-footer";
-import { SiteHeader } from "@/shared/layout/site-header";
 import "./globals.css";
 
 // UI and body text.
@@ -47,17 +42,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <SiteHeader
-          bagCount={
-            <Suspense fallback={null}>
-              <BagCount />
-            </Suspense>
-          }
-        />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <SiteFooter />
+        {/* Each area brings its own chrome: (shop)/layout.tsx for the
+            storefront, admin/layout.tsx for the admin portal. */}
+        {children}
       </body>
     </html>
   );

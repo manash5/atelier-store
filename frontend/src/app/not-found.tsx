@@ -1,6 +1,31 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { BagCount } from "@/modules/cart";
+import { SiteFooter } from "@/shared/layout/site-footer";
+import { SiteHeader } from "@/shared/layout/site-header";
+
+// Unknown URLs render outside the (shop) layout, so this page brings the
+// storefront chrome itself.
 export default function NotFound() {
+  return (
+    <>
+      <SiteHeader
+        bagCount={
+          <Suspense fallback={null}>
+            <BagCount />
+          </Suspense>
+        }
+      />
+      <main id="main" className="flex-1">
+        <NotFoundContent />
+      </main>
+      <SiteFooter />
+    </>
+  );
+}
+
+function NotFoundContent() {
   return (
     <section className="container-prose flex flex-col items-center py-section text-center">
       <p className="type-label text-ink-muted">Error 404</p>

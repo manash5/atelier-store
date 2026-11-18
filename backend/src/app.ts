@@ -26,6 +26,10 @@ export function createApp() {
 
   // Better Auth parses its own bodies: mount it before express.json().
   app.use("/api/auth", authRateLimit);
+  // Better Auth's admin plugin endpoints (impersonation, password resets,
+  // user deletion, role changes) are not used: admin features live under
+  // /api/v1/admin. Block them so a stolen admin cookie can't reach them.
+  app.use("/api/auth/admin", notFound);
   app.all("/api/auth/*splat", toNodeHandler(auth));
 
   app.use(express.json({ limit: "100kb" }));

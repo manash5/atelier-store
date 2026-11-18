@@ -7,19 +7,23 @@ The frontend is Next.js 16 (App Router, Turbopack, Cache Components) and is orga
 ```
 frontend/src/
 ├── app/                          # routing only
-│   ├── layout.tsx  globals.css  not-found.tsx  error.tsx
+│   ├── layout.tsx (html/body only)  globals.css  not-found.tsx (adds storefront chrome)
+│   ├── (shop)/layout.tsx         # storefront chrome: header, bag count, footer; error.tsx; every storefront route below lives in (shop)/
 │   ├── page.tsx                  # → @/modules/home
 │   ├── collections/new-in/page.tsx  # metadata → @/modules/products (NewArrivalsPage)
 │   ├── collections/[slug]/page.tsx  # category pages: params, metadata, Suspense → categories + products
 │   ├── collections/{women,men,gifts}/page.tsx  # metadata → @/modules/products (GenderCollectionPage, GiftsPage)
 │   ├── products/[slug]/page.tsx  # params, metadata, Suspense → @/modules/products
 │   ├── sign-in, sign-up, account, admin/page.tsx  # metadata → @/modules/auth (account also renders the cart's AccountBagSection)
-│   └── bag, checkout, orders/[number]/page.tsx    # metadata → @/modules/cart
+│   ├── bag, checkout, orders/[number]/page.tsx    # metadata → @/modules/cart
+│   └── admin/ layout.tsx, page.tsx, products/(new|[slug]), categories, orders/[number], admins  # → @/modules/admin
 ├── modules/
 │   ├── home/        components/, content.ts (editorial copy, curated slug lists), index.ts
 │   ├── products/    components/, api/products.service.ts, content.ts (curated giftSlugs), types.ts, index.ts, server.ts
 │   ├── categories/  components/, api/categories.service.ts, types.ts, index.ts, server.ts
 │   ├── collections/ components/, content.ts, types.ts, index.ts
+│   ├── admin/       actions.ts (catalog, stock, order status, roles, uploads), api/admin.service.ts, components/, lib/form-parsing.ts, types.ts, index.ts
+│   ├── services/    actions.ts (requestAppointmentAction), api/appointments.service.ts, components/, lib/appointment-validation.ts, content.ts, types.ts, index.ts
 │   ├── cart/        actions.ts (add, update, remove, place order), api/cart.service.ts, components/, lib/checkout-validation.ts, types.ts, index.ts, server.ts
 │   └── auth/        actions.ts (server actions), api/{auth,me,session}.service.ts, components/, lib/, types.ts, index.ts, server.ts
 ├── proxy.ts         # auth gate + access-token refresh (Next 16's middleware)
@@ -82,6 +86,14 @@ See ADR-013 and `docs/architecture/overview.md` for the flow.
 - **Server actions** (`modules/auth/actions.ts`): `signInAction`, `signUpAction` (validate, call Better Auth, store cookies, fetch the first JWT, redirect to a safe `next`), `signOutAction`, `uploadImageAction`. Forms use `useActionState`.
 - **`src/proxy.ts`** (runs on every page; protected: `/account`, `/admin`, `/bag`, `/checkout`, `/orders`): redirects visitors without a session away from protected pages to `/sign-in?next=…`; for signed-in visitors on any page it verifies the JWT against the backend JWKS and, if it's missing or expired, fetches a new one and forwards it to the same render; requires `role: "admin"` for `/admin`; sends signed-in visitors from the auth pages to `/account`. It is a UX gate — server actions re-check, and the backend verifies every token.
 - Server actions have a 6 MB body limit (`next.config.ts`) for admin uploads. `/uploads/*` is rewritten to the backend.
+
+## Admin dashboard
+
+`/admin/*` (ADR-016) is rendered by `modules/admin` inside `AdminShell` (`app/admin/layout.tsx`): overview, orders (list and detail with status actions), products (list, new, edit with a separate stock form), categories and admins.
+- Data comes from `/api/v1/admin/*` through `authedServerApi()` (request-specific, inside `<Suspense>`). List filters are plain GET forms, so the URL holds the state.
+- Mutations are server actions in `modules/admin/actions.ts`. Each one checks for an admin token (the backend decides) and maps API validation `details` to field errors. On failure it echoes the submitted values back so forms refill (React resets forms after an action). Catalog, stock and cancellation changes call `updateTag("catalog")`.
+- Images: `ImageListField` uploads through `uploadImageAction` (`/admin/uploads`) or accepts an Unsplash URL, with alt text, crop position and ordering.
+- `proxy.ts` sends non-admins away from `/admin` using the verified token; the API re-checks the database on every call.
 
 ## Caching and static generation
 

@@ -20,7 +20,8 @@ import {
 //    forwarded request (this render), so the bag count and "Add to bag" work
 //    on public pages too;
 // 3. /admin requires role "admin" in the verified token;
-// 4. signed-in visitors skip /sign-in and /sign-up.
+// 4. signed-in visitors skip /sign-in and /sign-up (admins go to /admin, and
+//    /account sends admins to /admin too).
 // The backend still verifies every token: this is a UX gate, not the boundary.
 
 const backendUrl = (process.env.BACKEND_URL ?? "").replace(/\/$/, "");
@@ -117,7 +118,11 @@ export async function proxy(request: NextRequest) {
     updated = [...refreshed.cookies, accessTokenCookie(refreshed.token)];
   }
 
-  if (isAuthPage) return redirectTo(request, "/account");
+  const isAdmin = claims?.role === "admin";
+  // Signed-in visitors skip the auth pages; admins work from the admin
+  // portal, so their "account" is the admin overview.
+  if (isAuthPage) return redirectTo(request, isAdmin ? "/admin" : "/account");
+  if (isAdmin && pathname === "/account") return redirectTo(request, "/admin");
   if (pathname.startsWith("/admin") && claims?.role !== "admin") {
     return redirectTo(request, "/account");
   }
