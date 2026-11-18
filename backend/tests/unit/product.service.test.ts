@@ -34,6 +34,7 @@ function product(slug: string, overrides: Partial<Product> = {}): Product {
     details: [],
     images: [{ src: "https://example.com/a.jpg", alt: "" }],
     badge: null,
+    gender: "unisex",
     createdAt: new Date(0),
     updatedAt: new Date(0),
     category: { slug: "shoes", title: "Shoes" },
@@ -86,6 +87,7 @@ describe("productService.list", () => {
     expect(repo.findPage).toHaveBeenCalledWith(20, 10, {
       order: "catalog",
       categorySlug: undefined,
+      gender: undefined,
     });
     expect(result.meta).toEqual({ page: 3, limit: 10, total: 30 });
   });
@@ -99,6 +101,7 @@ describe("productService.list", () => {
     expect(repo.findPage).toHaveBeenCalledWith(0, 24, {
       order: "newest",
       categorySlug: undefined,
+      gender: undefined,
     });
   });
 
@@ -111,9 +114,24 @@ describe("productService.list", () => {
     expect(repo.findPage).toHaveBeenCalledWith(0, 24, {
       order: "catalog",
       categorySlug: "shoes",
+      gender: undefined,
     });
-    expect(repo.count).toHaveBeenCalledWith({ categorySlug: "shoes" });
+    expect(repo.count).toHaveBeenCalledWith({ categorySlug: "shoes", gender: undefined });
     expect(result.meta).toEqual({ page: 1, limit: 24, total: 2 });
+  });
+
+  it("filters both the page and the total by gender", async () => {
+    repo.findPage.mockResolvedValue([]);
+    repo.count.mockResolvedValue(6);
+
+    await productService.list({ page: 1, limit: 24, gender: "men" });
+
+    expect(repo.findPage).toHaveBeenCalledWith(0, 24, {
+      order: "catalog",
+      categorySlug: undefined,
+      gender: "men",
+    });
+    expect(repo.count).toHaveBeenCalledWith({ categorySlug: undefined, gender: "men" });
   });
 });
 

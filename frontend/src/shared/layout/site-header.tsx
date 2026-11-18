@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { BagIcon, SearchIcon, UserIcon } from "@/shared/ui/icons";
 import { MenuDrawer } from "./menu-drawer";
 import { navigation } from "./navigation";
 
-export function SiteHeader() {
+/** `bagCount` is the cart's item badge, passed in by the root layout. */
+export function SiteHeader({ bagCount }: { bagCount?: ReactNode }) {
   return (
     <>
       <p className="flex h-announcement items-center justify-center bg-ink px-gutter type-micro text-canvas">
@@ -42,12 +44,10 @@ export function SiteHeader() {
             >
               <UserIcon />
             </Link>
-            <Link
-              href="/bag"
-              className="btn btn-ghost btn-icon"
-              aria-label="Shopping bag"
-            >
+            <Link href="/bag" className="relative btn btn-ghost btn-icon">
               <BagIcon />
+              <span className="sr-only">Shopping bag</span>
+              {bagCount}
             </Link>
           </div>
         </div>

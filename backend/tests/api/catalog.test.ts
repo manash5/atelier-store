@@ -40,6 +40,12 @@ describe("API without database", () => {
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("rejects an unknown gender", async () => {
+    const res = await request(app).get("/api/v1/products?gender=kids");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
   it("rejects an unknown sort", async () => {
     const res = await request(app).get("/api/v1/products?sort=price");
     expect(res.status).toBe(400);
@@ -66,6 +72,7 @@ describe.skipIf(!hasDatabase)("catalog API (seeded database)", () => {
       stock: 0,
       stockStatus: "sold-out",
       badge: null,
+      gender: "men",
     });
   });
 
@@ -91,7 +98,7 @@ describe.skipIf(!hasDatabase)("catalog API (seeded database)", () => {
     const res = await request(app).get("/api/v1/products?page=1&limit=5");
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(5);
-    expect(res.body.meta).toEqual({ page: 1, limit: 5, total: 12 });
+    expect(res.body.meta).toEqual({ page: 1, limit: 5, total: 27 });
     expect(PaginationMeta.safeParse(res.body.meta).success).toBe(true);
     for (const product of res.body.data) {
       expect(ProductDto.safeParse(product).success).toBe(true);
@@ -102,7 +109,7 @@ describe.skipIf(!hasDatabase)("catalog API (seeded database)", () => {
     const catalog = await request(app).get("/api/v1/products?limit=100");
     const newest = await request(app).get("/api/v1/products?limit=100&sort=newest");
     expect(newest.status).toBe(200);
-    expect(newest.body.meta).toEqual({ page: 1, limit: 100, total: 12 });
+    expect(newest.body.meta).toEqual({ page: 1, limit: 100, total: 27 });
     // The seed inserts every product in one transaction (same created_at),
     // so the id tie-break makes this the reverse of catalog order.
     const slugs = (res: typeof catalog) =>
@@ -117,8 +124,10 @@ describe.skipIf(!hasDatabase)("catalog API (seeded database)", () => {
       "double-monk-strap-shoe",
       "suede-wingtip-brogue",
       "floral-satin-pumps",
+      "polished-leather-derby",
+      "lace-up-leather-boot",
     ]);
-    expect(res.body.meta).toEqual({ page: 1, limit: 24, total: 3 });
+    expect(res.body.meta).toEqual({ page: 1, limit: 24, total: 5 });
   });
 
   it("GET /products?category returns an empty page for unknown categories", async () => {
@@ -126,6 +135,35 @@ describe.skipIf(!hasDatabase)("catalog API (seeded database)", () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual([]);
     expect(res.body.meta.total).toBe(0);
+  });
+
+  it("GET /products?gender=men lists men's and unisex products", async () => {
+    const res = await request(app).get("/api/v1/products?gender=men");
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((p: { slug: string }) => p.slug)).toEqual([
+      "silk-blend-bomber-jacket",
+      "leather-biker-jacket",
+      "cotton-jersey-sweatshirt",
+      "cotton-poplin-shirt",
+      "double-monk-strap-shoe",
+      "suede-wingtip-brogue",
+      "browline-optical-frames",
+      "crystal-round-sunglasses",
+      "bifold-leather-wallet",
+      "polished-leather-derby",
+      "lace-up-leather-boot",
+      "tailored-wool-blazer",
+    ]);
+    expect(res.body.meta.total).toBe(12);
+  });
+
+  it("GET /products?gender combines with category", async () => {
+    const res = await request(app).get("/api/v1/products?gender=women&category=shoes");
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((p: { slug: string }) => p.slug)).toEqual([
+      "floral-satin-pumps",
+    ]);
+    expect(res.body.meta.total).toBe(1);
   });
 
   it("GET /categories/:slug returns the category DTO", async () => {
@@ -147,8 +185,8 @@ describe.skipIf(!hasDatabase)("catalog API (seeded database)", () => {
     expect(res.body.data.map((p: { slug: string }) => p.slug)).toEqual([
       "suede-wingtip-brogue",
       "floral-satin-pumps",
-      "fringed-cotton-knit-poncho",
-      "silk-blend-bomber-jacket",
+      "polished-leather-derby",
+      "lace-up-leather-boot",
     ]);
   });
 

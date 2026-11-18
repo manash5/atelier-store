@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { AddToBagButton } from "@/modules/cart";
 import { ProductDetail, ProductPageSkeleton } from "@/modules/products";
 import { getAllProductSlugs, getProduct } from "@/modules/products/server";
 
@@ -52,5 +53,7 @@ async function ProductRoute({
   const product = await getProduct(slug);
   if (!product) notFound();
 
-  return <ProductDetail product={product} />;
+  return (
+    <ProductDetail product={product} addToBag={<AddToBagButton slug={product.slug} />} />
+  );
 }

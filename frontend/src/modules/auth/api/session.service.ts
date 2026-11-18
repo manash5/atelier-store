@@ -5,7 +5,13 @@ import { headers } from "next/headers";
 import { authApi } from "@/shared/api/server-client";
 
 export type Session = {
-  user: { id: string; name: string; email: string; image?: string | null };
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image?: string | null;
+    role?: string | null;
+  };
   session: { id: string; expiresAt: string };
 };
 

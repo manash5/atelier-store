@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 
 import { db } from "../database";
 import { categories, products } from "../database/schema";
@@ -8,17 +8,28 @@ const withCategory = {
   category: { columns: { slug: true, title: true } },
 } as const;
 
-type PageFilter = { categorySlug?: string | undefined };
+type PageFilter = {
+  categorySlug?: string | undefined;
+  /** `women` or `men`; unisex products match either. */
+  gender?: "women" | "men" | undefined;
+};
 
-/** Products in the category with this slug (none if it doesn't exist). */
-function inCategory(categorySlug: string | undefined) {
-  if (categorySlug === undefined) return undefined;
-  return inArray(
-    products.categoryId,
-    db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(eq(categories.slug, categorySlug)),
+/**
+ * WHERE clause for a catalog page: products in the category with this slug
+ * (none if it doesn't exist) and/or for this gender, including unisex.
+ */
+function pageWhere({ categorySlug, gender }: PageFilter) {
+  return and(
+    categorySlug === undefined
+      ? undefined
+      : inArray(
+          products.categoryId,
+          db
+            .select({ id: categories.id })
+            .from(categories)
+            .where(eq(categories.slug, categorySlug)),
+        ),
+    gender === undefined ? undefined : inArray(products.gender, [gender, "unisex"]),
   );
 }
 
@@ -41,20 +52,17 @@ export const productRepository = {
   },
 
   /**
-   * A page of the catalog (optionally one category) in catalog (insertion)
+   * A page of the catalog (optionally filtered) in catalog (insertion)
    * order, or newest first. `id` breaks ties between rows created in the
    * same transaction.
    */
   async findPage(
     offset: number,
     limit: number,
-    {
-      order = "catalog",
-      categorySlug,
-    }: PageFilter & { order?: "catalog" | "newest" } = {},
+    { order = "catalog", ...filter }: PageFilter & { order?: "catalog" | "newest" } = {},
   ): Promise<Product[]> {
     return db.query.products.findMany({
-      where: inCategory(categorySlug),
+      where: pageWhere(filter),
       orderBy:
         order === "newest"
           ? [desc(products.createdAt), desc(products.id)]
@@ -65,8 +73,8 @@ export const productRepository = {
     });
   },
 
-  async count({ categorySlug }: PageFilter = {}): Promise<number> {
-    return db.$count(products, inCategory(categorySlug));
+  async count(filter: PageFilter = {}): Promise<number> {
+    return db.$count(products, pageWhere(filter));
   },
 
   /**

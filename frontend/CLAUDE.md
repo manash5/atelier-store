@@ -4,9 +4,11 @@
 
 This is the Next.js 16 storefront (App Router, `src/` dir, Turbopack, Cache Components), using TypeScript, Tailwind CSS v4 and Axios. Architecture: `../docs/architecture/frontend-architecture.md`.
 
-- Built so far: homepage (`/`), product detail pages (`/products/[slug]`), New Arrivals (`/collections/new-in`, the 24 newest products via `sort=newest`) and category pages (`/collections/[slug]`, one per catalog category).
-- `/collections/<slug>` for anything that isn't a category (e.g. `women`, `gifts`, `resort-2027`) and the footer pages don't exist yet, so links to them show the not-found page.
+- Built so far: homepage (`/`), product detail pages (`/products/[slug]`), New Arrivals (`/collections/new-in`, the 24 newest products via `sort=newest`), category pages (`/collections/[slug]`, one per catalog category), Women and Men (`/collections/women|men`, via `gender=`, including unisex) and Gifts (`/collections/gifts`, the curated `giftSlugs` list in `modules/products/content.ts`, also used by the homepage Gift Edit).
+- `/collections/<slug>` for anything that isn't a category (e.g. `resort-2027`, `knitwear`) and the footer pages don't exist yet, so links to them show the not-found page.
 - Listing pages render `ProductListingPage` (header, count, `ProductListing` grid on `grid-products`, empty state) with `ProductListingSkeleton` as their Suspense fallback.
+- Cart and checkout: `/bag`, `/checkout` (demo payment) and `/orders/[number]` (confirmation), all signed-in only. Server actions live in `modules/cart/actions.ts`; card details are validated on the server and only the last four digits are sent to the API.
+- Auth: `/sign-in`, `/sign-up`, `/account` and `/admin` (image upload, admins only). Auth cookies are managed only in `src/shared/lib/auth-cookies.ts`; `src/proxy.ts` guards those routes and refreshes the JWT access token. Call protected endpoints with `authedServerApi()` from server code (never inside `'use cache'`), and re-check auth inside every server action. See ADR-013.
 - Path alias: `@/*` → `src/*`.
 
 ## Commands
@@ -41,7 +43,7 @@ This is the Next.js 16 storefront (App Router, `src/` dir, Turbopack, Cache Comp
 - `generateStaticParams` must return at least one param (Cache Components; `dynamicParams` is unavailable).
 - Unknown slugs call `notFound()`, which renders `src/app/not-found.tsx` with HTTP **200** + `noindex`, because the shell has already streamed. A true 404 status would need a slug check in `proxy.ts`.
 - `src/app/error.tsx` handles render failures, such as the API being down.
-- The "Add to bag" button is a placeholder until the cart exists.
+- "Add to bag" (`AddToBagButton` from `modules/cart`) is passed into `ProductDetail` by the product route, because feature modules don't import each other. The header bag badge (`BagCount`) and the account page's bag section are passed in the same way, as slots.
 
 ## Design system
 

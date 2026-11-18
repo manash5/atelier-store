@@ -1,12 +1,15 @@
-// Idempotent catalog seed: upserts categories and products by slug inside one
-// transaction. Safe to re-run; it never deletes rows.
-//   pnpm --filter @atelier/backend db:seed
+// Idempotent seed: upserts categories and products by slug inside one
+// transaction, then creates/promotes the admin from ADMIN_EMAIL and
+// ADMIN_PASSWORD when both are set. Safe to re-run; it never deletes rows.
+//   npm run db:seed
 
-import { getTableColumns, sql, type SQL } from "drizzle-orm";
+import { eq, getTableColumns, sql, type SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 
+import { env } from "../../config/env";
+import { auth } from "../../lib/auth";
 import { db, pool } from "../index";
-import { categories, products } from "../schema";
+import { categories, products, user } from "../schema";
 import { seedCategories, seedProducts } from "./data/catalog";
 
 /** `SET col = excluded.col` for every listed column (upsert helper). */
@@ -67,6 +70,7 @@ async function seed() {
           details: product.details,
           images: product.images,
           badge: product.badge ?? null,
+          gender: product.gender,
         })
         .onConflictDoUpdate({
           target: products.slug,
@@ -84,6 +88,7 @@ async function seed() {
               "details",
               "images",
               "badge",
+              "gender",
             ]),
             updatedAt: sql`now()`,
           },
@@ -98,7 +103,29 @@ async function seed() {
   console.log(`Seeded catalog: ${categoryCount} categories, ${productCount} products.`);
 }
 
+/**
+ * Ensures the ADMIN_EMAIL account exists (signed up through Better Auth so the
+ * password is hashed the same way) and has the admin role. An existing
+ * account's password is left unchanged.
+ */
+async function seedAdmin() {
+  const { ADMIN_EMAIL: email, ADMIN_PASSWORD: password } = env;
+  if (!email || !password) {
+    console.log("Skipped admin: set ADMIN_EMAIL and ADMIN_PASSWORD to create one.");
+    return;
+  }
+
+  const normalized = email.toLowerCase();
+  const existing = await db.query.user.findFirst({ where: eq(user.email, normalized) });
+  if (!existing) {
+    await auth.api.signUpEmail({ body: { email: normalized, password, name: "Atelier Admin" } });
+  }
+  await db.update(user).set({ role: "admin" }).where(eq(user.email, normalized));
+  console.log(`Admin ready: ${normalized}${existing ? " (existing account)" : ""}.`);
+}
+
 seed()
+  .then(seedAdmin)
   .catch((error: unknown) => {
     console.error(error);
     process.exitCode = 1;

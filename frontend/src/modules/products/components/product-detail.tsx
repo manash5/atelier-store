@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import { formatPrice } from "@/shared/lib/format-price";
 import { Disclosure } from "@/shared/ui/disclosure";
@@ -11,8 +12,17 @@ import { ProductGrid } from "./product-grid";
 import { ProductJsonLd } from "./product-json-ld";
 import { StockStatus } from "./stock-status";
 
+type ProductDetailProps = {
+  product: Product;
+  /**
+   * Purchase control for in-stock products (the cart's "Add to bag"),
+   * passed in by the route because feature modules don't import each other.
+   */
+  addToBag?: ReactNode;
+};
+
 /** The full product page body: gallery, buy box, details and related products. */
-export async function ProductDetail({ product }: { product: Product }) {
+export async function ProductDetail({ product, addToBag }: ProductDetailProps) {
   const status = product.stockStatus;
   const categoryTitle = product.category.title;
   const categoryHref = `/collections/${product.category.slug}`;
@@ -55,7 +65,6 @@ export async function ProductDetail({ product }: { product: Product }) {
               <StockStatus product={product} />
             </div>
 
-            {/* The cart isn't built yet: this is the slot for it. */}
             <div className="mt-8 flex flex-col gap-3">
               {status === "sold-out" ? (
                 <>
@@ -67,9 +76,7 @@ export async function ProductDetail({ product }: { product: Product }) {
                   </Link>
                 </>
               ) : (
-                <button type="button" className="btn btn-primary w-full">
-                  Add to bag
-                </button>
+                addToBag
               )}
             </div>
 

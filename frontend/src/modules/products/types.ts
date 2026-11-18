@@ -3,6 +3,12 @@ import type { Image } from "@/shared/types/image";
 
 // Mirrors ProductDto in docs/api/api-contracts.md.
 
+/** Who a product is designed for. Unisex products appear in both edits. */
+export type ProductGender = "women" | "men" | "unisex";
+
+/** Shop-by filter for the Women and Men pages (each includes unisex). */
+export type ShopGender = Exclude<ProductGender, "unisex">;
+
 /** Derived by the backend from `stock`; never recompute it here. */
 export type StockStatus = "in-stock" | "low-stock" | "sold-out";
 
@@ -21,6 +27,7 @@ export type Product = {
   /** First image is the primary/listing image. */
   images: [Image, ...Image[]];
   badge: "New" | "Limited" | null;
+  gender: ProductGender;
 };
 
 export type ProductResponse = ApiSuccess<Product>;

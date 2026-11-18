@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Bodoni_Moda, Inter } from "next/font/google";
+import { Suspense } from "react";
+
+import { BagCount } from "@/modules/cart";
 
 import { SiteFooter } from "@/shared/layout/site-footer";
 import { SiteHeader } from "@/shared/layout/site-header";
@@ -44,7 +47,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <SiteHeader />
+        <SiteHeader
+          bagCount={
+            <Suspense fallback={null}>
+              <BagCount />
+            </Suspense>
+          }
+        />
         <main id="main" className="flex-1">
           {children}
         </main>

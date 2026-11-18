@@ -9,3 +9,9 @@ export function sendOk<T>(res: Response, data: T, meta?: PaginationMeta): void {
     meta === undefined ? { data } : { data, meta };
   res.status(200).json(body);
 }
+
+/** Sends the standard success envelope with 201 Created. */
+export function sendCreated<T>(res: Response, data: T): void {
+  const body: ApiSuccess<T> = { data };
+  res.status(201).json(body);
+}

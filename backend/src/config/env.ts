@@ -26,6 +26,11 @@ const EnvSchema = z.object({
   CORS_ORIGINS: csv.pipe(z.array(z.url())).default(["http://localhost:3000"]),
   BETTER_AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
   BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
+  /** Directory (relative to the backend folder or absolute) for uploaded files. */
+  UPLOAD_DIR: z.string().min(1).default("uploads"),
+  /** Optional admin account created or promoted by `npm run db:seed`. */
+  ADMIN_EMAIL: z.email().optional(),
+  ADMIN_PASSWORD: z.string().min(8, "must be at least 8 characters").optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

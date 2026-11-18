@@ -16,14 +16,6 @@ export const newArrivalSlugs = [
   "suede-wingtip-brogue",
 ];
 
-/** Hand-picked "Gift Edit" row, in display order. */
-export const giftEditSlugs = [
-  "chevron-leather-shoulder-bag",
-  "sapphire-drop-earrings",
-  "filigree-gold-bracelet",
-  "floral-satin-pumps",
-];
-
 export const heroCampaign = {
   eyebrow: "Resort 2027",
   title: "Distant Light",

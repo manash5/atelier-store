@@ -3,3 +3,4 @@
 // (`pnpm auth:generate`) overwrites ./auth.ts only.
 export * from "./auth";
 export * from "./catalog";
+export * from "./commerce";

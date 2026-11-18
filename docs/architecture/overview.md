@@ -29,15 +29,17 @@ Browser ──► frontend (Next.js 16, storefront domain)
 
 The backend must be running, migrated and seeded during a frontend build.
 
-**A browser API call** (future cart/account features):
+**A browser API call** (future client-side features):
 1. A Client Component calls `browserApi` with `/api/v1/...` on the storefront origin.
 2. The `next.config.ts` rewrites forward the request to the backend.
 3. Cookies stay first-party and the backend URL is never exposed.
 
-**Authentication:**
-- Better Auth runs in Express. The browser reaches `/api/auth/*` through the same rewrites, so session cookies belong to the storefront domain.
-- Server Components read the session by forwarding the visitor's cookies to `/api/auth/get-session` (`@/modules/auth/server`).
-- No sign-in methods are enabled yet.
+**Authentication** (ADR-013):
+1. The sign-in/sign-up forms post to server actions (`frontend/src/modules/auth/actions.ts`), which call Better Auth (`/api/auth/sign-in/email`, `/sign-up/email`) on the backend.
+2. The action stores Better Auth's session cookie on the storefront origin, exchanges it at `GET /api/auth/token` for a 15-minute JWT, and stores that in the `atelier.access_token` cookie. Both cookies are httpOnly and managed by `frontend/src/shared/lib/auth-cookies.ts`.
+3. Server code calls protected endpoints with `authedServerApi()`, which sends `Authorization: Bearer <jwt>`.
+4. `frontend/src/proxy.ts` runs before every page: no session on a protected page (`/account`, `/admin`, `/bag`, `/checkout`, `/orders`) → redirect to sign-in; missing or expired JWT → refresh it from the session cookie; `/admin` → admin role required.
+5. The backend's `authorize` middleware verifies every token against Better Auth's keys, and `authorizeAdmin` checks the role.
 
 ## Environment
 
@@ -52,7 +54,9 @@ Each app reads its own `.env.local`. `.env.example` templates live next to each 
 | backend | `CORS_ORIGINS` | private | comma-separated; default `http://localhost:3000` |
 | backend | `TRUST_PROXY` | private | proxy hops in front of the API; default 1 |
 | backend | `BETTER_AUTH_SECRET` | private | ≥ 32 chars (`openssl rand -base64 32`) |
-| backend | `BETTER_AUTH_URL` | private | public **storefront** origin |
+| backend | `BETTER_AUTH_URL` | private | public **storefront** origin; also the JWT issuer and audience |
+| backend | `UPLOAD_DIR` | private | where uploaded files are stored; default `uploads` (relative to `backend/`) |
+| backend | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | private | optional; `npm run db:seed` creates this account (if missing) and gives it the admin role. Password ≥ 8 chars |
 | frontend | `BACKEND_URL` | server-only | e.g. `http://localhost:4000`. Used by server Axios and rewrites; never prefix with `NEXT_PUBLIC_` |
 | frontend | `NEXT_PUBLIC_APP_URL` | public | storefront origin |
 

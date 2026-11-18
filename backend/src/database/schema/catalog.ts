@@ -28,6 +28,9 @@ const timestamps = {
 
 export const productBadge = pgEnum("product_badge", ["New", "Limited"]);
 
+/** Who a product is designed for. Unisex products appear in both edits. */
+export const productGender = pgEnum("product_gender", ["women", "men", "unisex"]);
+
 export const categories = pgTable("categories", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   slug: text("slug").notNull().unique(),
@@ -63,6 +66,7 @@ export const products = pgTable(
     /** Ordered; the first image is the listing image. */
     images: jsonb("images").$type<[ImageData, ...ImageData[]]>().notNull(),
     badge: productBadge("badge"),
+    gender: productGender("gender").notNull().default("unisex"),
     ...timestamps,
   },
   (table) => [

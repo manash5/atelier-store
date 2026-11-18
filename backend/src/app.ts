@@ -5,6 +5,7 @@ import helmet from "helmet";
 
 import { corsOptions } from "./config/cors";
 import { env } from "./config/env";
+import { ensureUploadDir, uploadDir, UPLOADS_URL_PREFIX } from "./config/uploads";
 import { auth } from "./lib/auth";
 import { errorHandler } from "./middleware/error-handler";
 import { notFound } from "./middleware/not-found";
@@ -28,6 +29,13 @@ export function createApp() {
   app.all("/api/auth/*splat", toNodeHandler(auth));
 
   app.use(express.json({ limit: "100kb" }));
+
+  // Uploaded images. Names are random UUIDs, so they can be cached forever.
+  ensureUploadDir();
+  app.use(
+    UPLOADS_URL_PREFIX,
+    express.static(uploadDir, { immutable: true, maxAge: "365d", index: false, dotfiles: "deny" }),
+  );
 
   app.use("/health", healthRouter);
   app.use("/api/v1", apiRouter);

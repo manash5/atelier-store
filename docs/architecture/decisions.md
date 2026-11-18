@@ -98,3 +98,47 @@ pnpm 12 could not be installed reliably on the Windows development machine: its 
 - npm blocks dependency install scripts by default. The backend approves only esbuild, recorded under `allowScripts` in `backend/package.json`.
 
 Trade-off: npm hoists dependencies, so an app could import a package it doesn't declare. Code review and typecheck should catch this; declare every import in the app's `package.json`.
+
+## ADR-012: Gender is a product attribute; gifts are a curated list
+**Status:** accepted
+
+The storefront needs Women, Men and Gifts pages next to the category pages.
+- A product has exactly one category (Shoes, Bags…), but Women and Men cut across categories. So gender is a column on `products` (`women`, `men`, `unisex`), not a category. `GET /products?gender=` returns that gender plus unisex products, and can be combined with `category`.
+- Women, Men and Gifts are static routes (`/collections/women`, `/men`, `/gifts`), which take precedence over the `/collections/[slug]` category route.
+- Gifts is an editorial selection, not a product property. It stays a curated slug list (`frontend/src/modules/products/content.ts`), shared by the Gifts page and the homepage Gift Edit, until a collections API or CMS exists.
+
+Trade-off: a product can't be both women's and men's except as `unisex`; kids or more audiences would need a new enum value and migration.
+
+## ADR-013: JWT access tokens from Better Auth, cookies owned by the storefront
+**Status:** accepted (extends ADR-004 and ADR-005)
+
+Better Auth stays the account and session system (email + password), with two plugins:
+- `jwt` issues short-lived (15 min) EdDSA access tokens from `GET /api/auth/token`, with `role` in the claims, and publishes its public keys at `/api/auth/jwks`.
+- `admin` adds `role` (`user` default, `admin`) and ban fields to users.
+
+`/api/v1` is authorized only by `Authorization: Bearer <jwt>` (`authorize` and `authorizeAdmin` in `backend/src/middleware/auth.middleware.ts`); the session cookie is only used against `/api/auth/*`. The backend verifies tokens locally with the keys in its `jwks` table.
+
+The storefront owns the cookies (`frontend/src/shared/lib/auth-cookies.ts`): sign-in/up run as server actions that re-set Better Auth's session cookie on the storefront origin and store the JWT in an httpOnly `atelier.access_token` cookie. `frontend/src/proxy.ts` guards pages and refreshes expired JWTs from the session cookie, forwarding the new token to the same render.
+
+Trade-offs:
+- A role change or ban reaches `/api/v1` only when the current token expires (≤ 15 min); `/me` also re-reads the user and rejects banned accounts.
+- Tokens never reach browser JavaScript, so Client Components that need auth must go through server actions (or a future route handler) rather than `browserApi`.
+
+## ADR-014: Uploads on local disk via multer
+**Status:** accepted
+
+`POST /api/v1/admin/uploads` stores one image (JPEG, PNG, WebP, AVIF; ≤ 5 MB) with multer (`backend/src/middleware/upload.middleware.ts`) in `UPLOAD_DIR` under a random UUID name, and Express serves the folder at `/uploads` (proxied by the storefront rewrite). Auth middleware runs before multer, so rejected requests never write to disk.
+
+Trade-off: files live on the API host's disk, so they don't survive an ephemeral host or scale across instances. Move to object storage (S3, R2, Cloudinary) before production; only the middleware's storage engine and the returned URL should change.
+
+## ADR-015: Server-side carts, orders with atomic stock, simulated payment
+**Status:** accepted (the design update required before adding carts and orders)
+
+- **Signed-in only.** Adding to the bag requires an account: guests are sent to sign in and return to the product. There is no guest cart to merge.
+- **One cart per user, in the database** (`cart_items`: user, product, quantity). The bag always shows live prices and stock. Each line carries an `issue` (`sold-out`, `insufficient-stock`) when stock has dropped below its quantity, and checkout is blocked until the shopper fixes it. Lines are never changed silently.
+- **Stock is enforced twice:** when adding or raising a quantity (409 `CONFLICT` with a clear message), and atomically when the order is placed, with a conditional `UPDATE … WHERE stock >= qty` per line inside one transaction, so concurrent orders can't oversell. Stock is only ever decremented there.
+- **Orders snapshot** name, colour, image and unit price in `order_items`, so they stay correct when the catalog changes.
+- **Payments are simulated.** The checkout form validates card details on the storefront server (Luhn, expiry, CVC) and sends only the last four digits; every placed order is `paid`. A real provider (e.g. Stripe) would replace this step and confirm payment before stock is decremented.
+- After an order, the storefront calls `updateTag("catalog")` so product pages show the new stock immediately.
+
+Trade-offs: the bag doesn't reserve stock, so an item can sell out between adding and paying (the shopper sees why). There are no cancellations, refunds or emails yet.

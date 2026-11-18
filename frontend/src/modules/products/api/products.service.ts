@@ -5,7 +5,12 @@ import { cacheLife, cacheTag } from "next/cache";
 import { isApiError } from "@/shared/api/errors";
 import { serverApi } from "@/shared/api/server-client";
 
-import type { Product, ProductListResponse, ProductResponse } from "../types";
+import type {
+  Product,
+  ProductListResponse,
+  ProductResponse,
+  ShopGender,
+} from "../types";
 
 // Catalog reads are cached and tagged so they prerender into the static shell.
 // Invalidate with revalidateTag("catalog", "max") once something writes stock.
@@ -62,6 +67,21 @@ export async function getProductsByCategory(
 
   const { data } = await serverApi.get<ProductListResponse>("/products", {
     params: { category: categorySlug, limit },
+  });
+  return data.data;
+}
+
+/** The Women or Men edit: that gender plus unisex, in catalog order. */
+export async function getProductsByGender(
+  gender: ShopGender,
+  limit = 24,
+): Promise<Product[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("catalog");
+
+  const { data } = await serverApi.get<ProductListResponse>("/products", {
+    params: { gender, limit },
   });
   return data.data;
 }

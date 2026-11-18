@@ -1,5 +1,5 @@
 import type { PaginationMeta } from "../dtos/common.dto";
-import type { ProductSort } from "../dtos/product.dto";
+import type { ProductSort, ShopGender } from "../dtos/product.dto";
 
 import { NotFoundError } from "../exceptions";
 import { logger } from "../lib/logger";
@@ -15,26 +15,26 @@ export const productService = {
   },
 
   /**
-   * A page of the catalog, or of one category, in catalog order or newest
-   * first (the "New In" listing).
+   * A page of the catalog, optionally narrowed to one category and/or one
+   * gender (which includes unisex), in catalog order or newest first.
    */
   async list({
     page,
     limit,
     sort = "catalog",
     category,
+    gender,
   }: {
     page: number;
     limit: number;
     sort?: ProductSort;
     category?: string | undefined;
+    gender?: ShopGender | undefined;
   }): Promise<Page<Product>> {
+    const filter = { categorySlug: category, gender };
     const [items, total] = await Promise.all([
-      productRepository.findPage((page - 1) * limit, limit, {
-        order: sort,
-        categorySlug: category,
-      }),
-      productRepository.count({ categorySlug: category }),
+      productRepository.findPage((page - 1) * limit, limit, { ...filter, order: sort }),
+      productRepository.count(filter),
     ]);
     return { items, meta: { page, limit, total } };
   },

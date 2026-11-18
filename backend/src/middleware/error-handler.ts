@@ -3,6 +3,7 @@ import type { ErrorRequestHandler } from "express";
 
 import { isProduction } from "../config/env";
 import { AppError } from "../exceptions";
+import { toUploadError } from "./upload.middleware";
 
 /** Body-parser and similar errors carry an HTTP status of their own. */
 function clientStatus(error: unknown): number | undefined {
@@ -30,7 +31,8 @@ function describe(error: unknown): string {
   return `${outer}: ${(current as Error).message}`;
 }
 
-export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (thrown, req, res, _next) => {
+  const error: unknown = toUploadError(thrown) ?? thrown;
   let status: number;
   let body: ApiErrorBody;
 

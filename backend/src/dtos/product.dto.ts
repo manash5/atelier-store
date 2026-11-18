@@ -14,6 +14,8 @@ export type StockStatus = z.infer<typeof StockStatus>;
 
 export const ProductBadge = z.enum(["New", "Limited"]);
 
+export const ProductGender = z.enum(["women", "men", "unisex"]);
+
 export const MoneyDto = z.object({
   /** Integer minor units (cents for USD). */
   amount: z.number().int().nonnegative(),
@@ -36,6 +38,7 @@ export const ProductDto = z.object({
   /** First image is the primary/listing image. */
   images: z.tuple([ImageDto], ImageDto),
   badge: ProductBadge.nullable(),
+  gender: ProductGender,
 });
 export type ProductDto = z.infer<typeof ProductDto>;
 
@@ -55,11 +58,16 @@ export const ProductSlugParams = z.object({ slug: Slug });
 export const ProductSort = z.enum(["catalog", "newest"]);
 export type ProductSort = z.infer<typeof ProductSort>;
 
+/** Shop-by filter: `women` or `men`, each including unisex products. */
+export const ShopGender = z.enum(["women", "men"]);
+export type ShopGender = z.infer<typeof ShopGender>;
+
 /**
  * `GET /products`. With `slugs` (comma-separated), returns exactly those
- * products in the given order (`sort` and `category` are ignored); otherwise
- * returns a page of the catalog in `sort` order, optionally limited to one
- * `category` (an unknown category gives an empty page).
+ * products in the given order (`sort`, `category` and `gender` are ignored);
+ * otherwise returns a page of the catalog in `sort` order, optionally limited
+ * to one `category` (an unknown category gives an empty page) and/or one
+ * `gender` (which includes unisex products).
  */
 export const ListProductsQuery = z.object({
   slugs: z
@@ -76,6 +84,7 @@ export const ListProductsQuery = z.object({
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(24),
   sort: ProductSort.default("catalog"),
   category: Slug.optional(),
+  gender: ShopGender.optional(),
 });
 
 export const RelatedProductsQuery = z.object({
@@ -100,5 +109,6 @@ export function toProductDto(product: Product): ProductDto {
     details: product.details,
     images: product.images,
     badge: product.badge,
+    gender: product.gender,
   };
 }

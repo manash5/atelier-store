@@ -5,6 +5,7 @@ export {
   getNewArrivals,
   getProduct,
   getProductsByCategory,
+  getProductsByGender,
   getProductsBySlugs,
   getRelatedProducts,
 } from "./api/products.service";

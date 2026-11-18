@@ -2,6 +2,8 @@ import "server-only";
 
 import axios from "axios";
 
+import { getAccessToken } from "@/shared/lib/auth-cookies";
+
 import { toApiError } from "./errors";
 
 // Used by Server Components, generateMetadata and generateStaticParams. Calls
@@ -29,3 +31,22 @@ export const authApi = axios.create({
 });
 
 authApi.interceptors.response.use(undefined, toApiError);
+
+/**
+ * `serverApi` with the visitor's access token as `Authorization: Bearer`.
+ * Request-specific: never call inside `'use cache'`. Requests are sent
+ * without a token when the visitor has none, so the backend answers 401.
+ */
+export async function authedServerApi() {
+  const token = await getAccessToken();
+  const client = axios.create({
+    baseURL: serverApi.defaults.baseURL,
+    timeout: 30_000,
+    headers: {
+      Accept: "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  client.interceptors.response.use(undefined, toApiError);
+  return client;
+}

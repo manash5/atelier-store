@@ -1,11 +1,9 @@
-import { ProductGrid } from "@/modules/products";
+import { giftSlugs, ProductGrid } from "@/modules/products";
 import { getProductsBySlugs } from "@/modules/products/server";
 import { SectionHeading } from "@/shared/ui/section-heading";
 
-import { giftEditSlugs } from "../content";
-
 export async function GiftEdit() {
-  const giftEdit = await getProductsBySlugs(giftEditSlugs);
+  const giftEdit = await getProductsBySlugs(giftSlugs.slice(0, 4));
 
   return (
     <section aria-labelledby="gift-edit-title" className="container-page py-section">

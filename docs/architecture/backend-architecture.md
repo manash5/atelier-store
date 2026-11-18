@@ -20,8 +20,8 @@ backend/
 │   │   └── seed/         # seed.ts + data/catalog.ts
 │   ├── dtos/             # Zod request/response schemas (the API contract) + model → DTO mappers
 │   ├── exceptions/       # AppError, NotFoundError, ValidationError
-│   ├── lib/              # auth.ts (Better Auth instance), logger.ts (pino)
-│   ├── middleware/       # validate, error-handler, not-found, request-logger, rate-limit, require-auth
+│   ├── lib/              # auth.ts (Better Auth instance), jwt.ts (access token verification), logger.ts (pino)
+│   ├── middleware/       # validate, error-handler, not-found, request-logger, rate-limit, auth.middleware, upload.middleware
 │   ├── models/           # domain types inferred from the schema + domain rules (deriveStockStatus)
 │   ├── repositories/     # Drizzle queries
 │   ├── routes/           # Express routers; index.ts mounts /api/v1
@@ -58,14 +58,16 @@ Express 5 forwards rejected promises to the error handler, so there are no `try/
 4. `cors` (allowlist from `CORS_ORIGINS`, credentials)
 5. `/api/auth/*`: rate limit, then the Better Auth handler. This **must** come before `express.json()`.
 6. `express.json({ limit: "100kb" })`
-7. `/health` and `/api/v1` routers
-8. `notFound`, then `errorHandler`
+7. `/uploads` static files (`UPLOAD_DIR`, immutable cache)
+8. `/health` and `/api/v1` routers
+9. `notFound`, then `errorHandler`
 
 ## Errors
 
 - Services throw `AppError(status, code, message, details?)` or its subclasses.
 - `errorHandler` turns them into `{ "error": { "code", "message", "details"? } }`.
 - Body-parser errors become 400 `BAD_REQUEST`.
+- Multer errors (file too large, unexpected field) become 400 `VALIDATION_ERROR`.
 - Anything else becomes a 500 `INTERNAL_ERROR`. It is logged with the request id, and production responses get a generic message.
 
 ## Validation
@@ -80,8 +82,16 @@ Express 5 forwards rejected promises to the error handler, so there are no `try/
   - `baseURL` is the storefront origin.
   - `trustedOrigins` comes from `BETTER_AUTH_URL` and `CORS_ORIGINS`.
   - Cookies are secure in production and default to httpOnly and SameSite=Lax.
-- `middleware/require-auth.ts` resolves the session with `auth.api.getSession({ headers: fromNodeHeaders(req.headers) })` and exposes it as `res.locals.session`.
-- Authorization decisions belong in services.
+  - Email + password sign-in is enabled (8–128 character passwords).
+  - The `jwt` plugin issues 15-minute access tokens at `GET /api/auth/token` (claims: `sub`, `email`, `name`, `role`; `iss`/`aud` = `BETTER_AUTH_URL`) and serves `/api/auth/jwks`.
+  - The `admin` plugin adds `role` and ban fields to users.
+- `lib/jwt.ts` `verifyAccessToken()` checks signature, issuer, audience, expiry and claims with `jose`, using keys from `auth.api.getJwks()` (cached; reloaded when a token names an unknown key).
+- `middleware/auth.middleware.ts`:
+  - `authorize` reads the `Authorization` header, requires `Bearer <token>`, verifies it and sets `req.user` (the decoded claims). Each failure is a 401 `UNAUTHORIZED`.
+  - `authorizeAdmin` runs after `authorize` and returns 403 `FORBIDDEN` unless `req.user.role === "admin"`.
+- `middleware/upload.middleware.ts` exports `uploadImage` (multer, disk storage in `UPLOAD_DIR`, one image in field `image`, JPEG/PNG/WebP/AVIF, ≤ 5 MB, random UUID filenames). Mount it after the auth middleware so rejected requests never write files.
+- Routes attach the middleware; resource-level authorization decisions (e.g. "owns this order") belong in services.
+- The seed creates or promotes the admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
 
 ## Transactions
 
